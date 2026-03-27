@@ -160,7 +160,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .pull-divider td{font-size:9px;font-family:'Open Sans',sans-serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:700}
 .emory-card{box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .scenario-toggles{display:inline-flex;gap:2px;margin-left:8px}
-.scenario-btn{width:24px;height:22px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .15s;line-height:1}
+.scenario-btn{padding:2px 5px;height:22px;font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .15s;line-height:1;white-space:nowrap}
 .scenario-btn:hover{border-color:var(--border-accent);color:var(--text)}
 .scenario-btn.scenario-w.active{background:var(--win-bg);color:var(--win);border-color:var(--win)}
 .scenario-btn.scenario-l.active{background:var(--loss-bg);color:var(--loss);border-color:var(--loss)}
@@ -765,14 +765,16 @@ function getMatchups(team) {
   return getMatchupsAsOf(team, S.curRound + 1).pool;
 }
 
-function toggleScenario(teamName, rd, result) {
+// scenarios store: { result: 'W'|'L', ballots: number }
+function toggleScenario(teamName, rd, result, ballots) {
   if (!scenarios[teamName]) scenarios[teamName] = {};
-  if (scenarios[teamName][rd] === result) {
+  const cur = scenarios[teamName][rd];
+  if (cur && cur.result === result && cur.ballots === ballots) {
     delete scenarios[teamName][rd];
     // Also clear any projections for later rounds
     for (let r = rd + 1; r <= 8; r++) delete scenarios[teamName][r];
   } else {
-    scenarios[teamName][rd] = result;
+    scenarios[teamName][rd] = { result, ballots };
   }
   render();
 }
@@ -806,8 +808,8 @@ function teamRecordsAsOf(rd) {
     if (sc) {
       for (let r = 1; r < rd; r++) {
         if (sc[r] && !t.rounds.find(x => x.round === r)) {
-          if (sc[r] === 'W') winsAsOf++;
-          // ballots unknown for projections, leave as-is
+          if (sc[r].result === 'W') winsAsOf++;
+          ballotsAsOf += sc[r].ballots;
         }
       }
     }
@@ -935,10 +937,11 @@ function renderCard(team) {
   const hasScenario = Object.keys(sc).length > 0;
 
   // Projected record including scenarios
-  let projW = team.wins, projL = l;
+  let projW = team.wins, projL = l, projBlt = team.ballots;
   for (const [r, res] of Object.entries(sc)) {
     if (!team.rounds.find(x => x.round === parseInt(r))) {
-      if (res === 'W') projW++; else projL++;
+      if (res.result === 'W') projW++; else projL++;
+      projBlt += res.ballots;
     }
   }
 
@@ -950,7 +953,7 @@ function renderCard(team) {
         <span class="record-badge record-wins">${team.wins}W</span>
         <span class="record-badge record-losses">${l}L</span>
         <span class="ballot-count">${team.ballots} blt</span>
-        ${hasScenario ? `<span class="scenario-projected-record">→ ${projW}-${projL}</span>` : ''}
+        ${hasScenario ? `<span class="scenario-projected-record">→ ${projW}-${projL} (${projBlt} blt)</span>` : ''}
       </div>
     </div>
     <div class="card-rounds">
@@ -978,15 +981,17 @@ function renderRoundSection(team, rd, past) {
   const isFuture = !rdResult;
   const isNext = rd === S.curRound + 1;
   const sc = scenarios[team.name] || {};
-  const scenarioResult = sc[rd]; // 'W', 'L', or undefined
+  const scenarioResult = sc[rd]; // { result, ballots } or undefined
 
   // Record entering this round (real + scenario)
   let winsEntering = team.rounds.filter(r => r.round < rd && r.result === 'W').length;
   let lossesEntering = team.rounds.filter(r => r.round < rd && r.result === 'L').length;
+  let ballotsEntering = team.rounds.filter(r => r.round < rd).reduce((s, r) => s + r.ballots, 0);
   for (let r = 1; r < rd; r++) {
     if (sc[r] && !team.rounds.find(x => x.round === r)) {
-      if (sc[r] === 'W') winsEntering++;
+      if (sc[r].result === 'W') winsEntering++;
       else lossesEntering++;
+      ballotsEntering += sc[r].ballots;
     }
   }
   const teamSide = likelySideAsOf(team.name, rd);
@@ -1006,7 +1011,7 @@ function renderRoundSection(team, rd, past) {
   h += `<div class="round-section-header" onclick="toggleRound('${tn}',${rd},${isNext})">`;
   h += `<div class="round-section-title">`;
   h += `<span class="round-num">Rd ${rd}</span>`;
-  h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering</span>`;
+  h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering${Object.keys(sc).length ? ` · ${ballotsEntering} blt` : ''}</span>`;
   if (isFuture) {
     if (teamSide.locked) h += `<span class="side-tag ${teamSide.side.toLowerCase()}">Locked ${teamSide.side}</span>`;
     else h += `<span class="side-either">Either Side</span>`;
@@ -1017,19 +1022,22 @@ function renderRoundSection(team, rd, past) {
     h += `<span class="round-result ${rc}">${rdResult.result} ${rdResult.ballots}blt</span>`;
     if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)} <span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span></span>`;
   } else if (scenarioResult) {
-    const rc = scenarioResult === 'W' ? 'win' : 'loss';
-    h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult}</span>`;
+    const rc = scenarioResult.result === 'W' ? 'win' : 'loss';
+    h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult.result} ${scenarioResult.ballots}blt</span>`;
   } else if (isNext) {
     h += `<span class="round-result pending-label">NEXT</span>`;
   } else {
     h += `<span class="round-result pending-label">—</span>`;
   }
 
-  // W/L scenario toggle buttons for future rounds
+  // W/L scenario toggle buttons with ballot counts for future rounds
   if (isFuture) {
+    const sr = scenarioResult;
     h += `<span class="scenario-toggles" onclick="event.stopPropagation()">`;
-    h += `<button class="scenario-btn scenario-w${scenarioResult === 'W' ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'W')" title="Project a win">W</button>`;
-    h += `<button class="scenario-btn scenario-l${scenarioResult === 'L' ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'L')" title="Project a loss">L</button>`;
+    h += `<button class="scenario-btn scenario-w${sr && sr.result==='W' && sr.ballots===3 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'W',3)" title="Win 3-0">3‑0</button>`;
+    h += `<button class="scenario-btn scenario-w${sr && sr.result==='W' && sr.ballots===2 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'W',2)" title="Win 2-1">2‑1</button>`;
+    h += `<button class="scenario-btn scenario-l${sr && sr.result==='L' && sr.ballots===1 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'L',1)" title="Loss 1-2">1‑2</button>`;
+    h += `<button class="scenario-btn scenario-l${sr && sr.result==='L' && sr.ballots===0 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'L',0)" title="Loss 0-3">0‑3</button>`;
     h += `</span>`;
   }
 
