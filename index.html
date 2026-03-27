@@ -935,8 +935,10 @@ function renderRoundSection(team, rd, past) {
   h += `<div class="round-section-title">`;
   h += `<span class="round-num">Rd ${rd}</span>`;
   h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering</span>`;
-  if (teamSide.locked) h += `<span class="side-tag ${teamSide.side.toLowerCase()}">Locked ${teamSide.side}</span>`;
-  else if (teamSide.side === 'EITHER') h += `<span class="side-either">Either Side</span>`;
+  if (isFuture) {
+    if (teamSide.locked) h += `<span class="side-tag ${teamSide.side.toLowerCase()}">Locked ${teamSide.side}</span>`;
+    else h += `<span class="side-either">Either Side</span>`;
+  }
 
   if (rdResult) {
     const rc = rdResult.result === 'W' ? 'win' : 'loss';
