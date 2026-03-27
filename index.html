@@ -603,13 +603,19 @@ function parseStandingsFromRows(rows) {
 
     // Parse round-by-round W/L and ballot data
     for (let r = 0; r < wlCols.length && r < 8; r++) {
-      const wl = (row[wlCols[r]] || '').trim();
+      const wl = (row[wlCols[r]] || '').trim().toUpperCase();
       const blt = r < bltCols.length ? (row[bltCols[r]] || '').trim() : '0';
-      if (wl !== '' && wl !== '0') {
+      if (wl === '') continue;
+      // Support both letter format ("W"/"L") and numeric format (positive/negative)
+      let result = null;
+      if (wl === 'W' || wl === 'WIN') result = 'W';
+      else if (wl === 'L' || wl === 'LOSS') result = 'L';
+      else {
         const n = parseFloat(wl);
-        if (!isNaN(n) && n !== 0) {
-          t.rounds.push({ round: r+1, result: n > 0 ? 'W' : 'L', wl: n, ballots: parseInt(blt)||0 });
-        }
+        if (!isNaN(n) && n !== 0) result = n > 0 ? 'W' : 'L';
+      }
+      if (result) {
+        t.rounds.push({ round: r+1, result, wl: result === 'W' ? 1 : -1, ballots: parseInt(blt)||0 });
       }
     }
     teams.push(t);
@@ -656,7 +662,7 @@ function buildNameMap() {
 
 function resolveName(n) {
   n = n.trim().replace(/[?]+$/, '').trim();
-  if (S.nameMap[n]) return S.nameMap[n];
+  if (n in S.nameMap) return S.nameMap[n];
   // Try splitting into school abbreviation + code and matching via ABBREVS
   const m = n.match(/^(.+?)\s+([A-Z]{2,3})\s*$/);
   if (m) {
@@ -673,6 +679,12 @@ function resolveName(n) {
         dbg(`Fuzzy match: "${n}" → "${sameSchool[0].name}" (only team from ${fullSchool})`);
         S.nameMap[n] = sameSchool[0].name;
         return sameSchool[0].name;
+      }
+      if (sameSchool.length === 0) {
+        // School known but has no teams in standings — not a participant, skip silently
+        dbg(`Skipping "${n}": ${fullSchool} has no teams in standings`);
+        S.nameMap[n] = null;
+        return null;
       }
     }
   }
@@ -763,7 +775,8 @@ function getMatchupsAsOf(team, rd) {
   return { pool, pullUp, pullDown, fullBracketSize };
 }
 
-// Compute the likely side for a team entering round `rd`
+// Compute the side for a team entering round `rd`
+// Returns { side: 'AFF'|'NEG'|'EITHER', locked: boolean }
 function likelySideAsOf(teamName, rd) {
   const pastOpps = (S.pastOpps[teamName] || []).filter(p => p.round < rd);
   let aff = 0, neg = 0;
@@ -771,9 +784,9 @@ function likelySideAsOf(teamName, rd) {
     if (p.side === 'aff') aff++;
     else neg++;
   }
-  if (aff < neg) return 'AFF';
-  if (neg < aff) return 'NEG';
-  return null;
+  if (aff < neg) return { side: 'AFF', locked: true };
+  if (neg < aff) return { side: 'NEG', locked: true };
+  return { side: 'EITHER', locked: false };
 }
 
 function likelySide(eTeam) {
@@ -861,7 +874,7 @@ function renderCard(team) {
       <div class="side-summary">
         <span class="side-tag aff">AFF ${sd.aff}</span>
         <span class="side-tag neg">NEG ${sd.neg}</span>
-        ${nextSide ? `<span style="font-size:9px;color:var(--text-muted)">→ likely ${nextSide}</span>` : ''}
+        ${nextSide.locked ? `<span style="font-size:9px;color:var(--text-muted)">→ Locked ${nextSide.side}</span>` : `<span style="font-size:9px;color:var(--text-muted)">→ Either Side</span>`}
       </div>
     </div>`;
 
@@ -899,7 +912,8 @@ function renderRoundSection(team, rd, past) {
   h += `<div class="round-section-title">`;
   h += `<span class="round-num">Rd ${rd}</span>`;
   h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering</span>`;
-  if (teamSide) h += `<span class="side-tag ${teamSide.toLowerCase()}">likely ${teamSide}</span>`;
+  if (teamSide.locked) h += `<span class="side-tag ${teamSide.side.toLowerCase()}">Locked ${teamSide.side}</span>`;
+  else if (teamSide.side === 'EITHER') h += `<span class="side-either">Either Side</span>`;
 
   if (rdResult) {
     const rc = rdResult.result === 'W' ? 'win' : 'loss';
@@ -968,7 +982,7 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, fullBr
       h += `<td class="tn">${esc(m.name)}</td>`;
       h += `<td>${m.winsAsOf}-${mLosses}</td>`;
       h += `<td>${m.ballotsAsOf}</td>`;
-      h += `<td>${oppSide ? `<span class="side-tag ${oppSide.toLowerCase()}">${oppSide}</span>` : '<span class="side-either">EITHER</span>'}</td>`;
+      h += `<td>${oppSide.locked ? `<span class="side-tag ${oppSide.side.toLowerCase()}">Locked ${oppSide.side}</span>` : '<span class="side-either">Either Side</span>'}</td>`;
       h += `<td>${prob.toFixed(1)}%</td>`;
       h += `<td>${label ? `<span class="pull-label ${label}">${label}</span>` : ''}</td>`;
       h += `</tr>`;
