@@ -159,6 +159,16 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .pull-label.pull-down{color:var(--neg-color);background:rgba(123,45,142,0.08)}
 .pull-divider td{font-size:9px;font-family:'Open Sans',sans-serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:700}
 .emory-card{box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.scenario-toggles{display:inline-flex;gap:2px;margin-left:8px}
+.scenario-btn{width:24px;height:22px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .15s;line-height:1}
+.scenario-btn:hover{border-color:var(--border-accent);color:var(--text)}
+.scenario-btn.scenario-w.active{background:var(--win-bg);color:var(--win);border-color:var(--win)}
+.scenario-btn.scenario-l.active{background:var(--loss-bg);color:var(--loss);border-color:var(--loss)}
+.scenario-round{background:rgba(0,51,160,0.04);border-left:3px solid var(--emory-blue)}
+.scenario-result{font-style:italic;letter-spacing:.5px}
+.scenario-projected-record{font-size:10px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--emory-blue);margin-left:6px;font-style:italic}
+.scenario-clear{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:3px;padding:1px 8px;cursor:pointer;margin-left:8px;text-transform:uppercase;letter-spacing:0.05em}
+.scenario-clear:hover{border-color:var(--loss);color:var(--loss)}
 .accent-bar{position:fixed;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--emory-dark),var(--emory-blue),var(--emory-yellow));z-index:100}
 @media(max-width:600px){h1{font-size:28px}h1 span{font-size:12px}.emory-grid{grid-template-columns:1fr}.container{padding:14px}}
 </style>
@@ -206,6 +216,8 @@ function esc(s) {
 
 let activeTab = null; // currently selected Emory team name, null = first
 let standingsOpen = false; // persists across re-renders
+let scenarios = {}; // teamName -> { roundNum: 'W'|'L' } — hypothetical projections
+let expandedRounds = {}; // teamName -> Set of expanded round numbers
 
 let S = {
   teams: [],
@@ -753,15 +765,53 @@ function getMatchups(team) {
   return getMatchupsAsOf(team, S.curRound + 1).pool;
 }
 
-// Precompute all teams' records entering a given round (avoids redundant per-team filtering)
+function toggleScenario(teamName, rd, result) {
+  if (!scenarios[teamName]) scenarios[teamName] = {};
+  if (scenarios[teamName][rd] === result) {
+    delete scenarios[teamName][rd];
+    // Also clear any projections for later rounds
+    for (let r = rd + 1; r <= 8; r++) delete scenarios[teamName][r];
+  } else {
+    scenarios[teamName][rd] = result;
+  }
+  render();
+}
+
+function clearScenarios(teamName) {
+  delete scenarios[teamName];
+  render();
+}
+
+function toggleRound(teamName, rd, isNext) {
+  if (!expandedRounds[teamName]) expandedRounds[teamName] = new Set();
+  const exp = expandedRounds[teamName];
+  if (isNext) {
+    if (exp.has(-rd)) exp.delete(-rd); else exp.add(-rd);
+  } else {
+    if (exp.has(rd)) exp.delete(rd); else exp.add(rd);
+  }
+  // Toggle DOM directly for speed (avoid full re-render)
+  const el = event.currentTarget.parentElement;
+  if (el) el.classList.toggle('collapsed');
+}
+
+// Precompute all teams' records entering a given round (includes scenario projections)
 function teamRecordsAsOf(rd) {
   return S.teams.map(t => {
     const rds = t.rounds.filter(r => r.round < rd);
-    return {
-      ...t,
-      winsAsOf: rds.filter(r => r.result === 'W').length,
-      ballotsAsOf: rds.reduce((s, r) => s + r.ballots, 0),
-    };
+    let winsAsOf = rds.filter(r => r.result === 'W').length;
+    let ballotsAsOf = rds.reduce((s, r) => s + r.ballots, 0);
+    // Add scenario projections for this team
+    const sc = scenarios[t.name];
+    if (sc) {
+      for (let r = 1; r < rd; r++) {
+        if (sc[r] && !t.rounds.find(x => x.round === r)) {
+          if (sc[r] === 'W') winsAsOf++;
+          // ballots unknown for projections, leave as-is
+        }
+      }
+    }
+    return { ...t, winsAsOf, ballotsAsOf };
   });
 }
 
@@ -881,6 +931,16 @@ function renderCard(team) {
   const sd = S.sides[team.name] || { aff:0, neg:0 };
   const past = S.pastOpps[team.name] || [];
   const nextSide = likelySide(team);
+  const sc = scenarios[team.name] || {};
+  const hasScenario = Object.keys(sc).length > 0;
+
+  // Projected record including scenarios
+  let projW = team.wins, projL = l;
+  for (const [r, res] of Object.entries(sc)) {
+    if (!team.rounds.find(x => x.round === parseInt(r))) {
+      if (res === 'W') projW++; else projL++;
+    }
+  }
 
   let h = `
   <div class="emory-card">
@@ -890,6 +950,7 @@ function renderCard(team) {
         <span class="record-badge record-wins">${team.wins}W</span>
         <span class="record-badge record-losses">${l}L</span>
         <span class="ballot-count">${team.ballots} blt</span>
+        ${hasScenario ? `<span class="scenario-projected-record">→ ${projW}-${projL}</span>` : ''}
       </div>
     </div>
     <div class="card-rounds">
@@ -898,6 +959,7 @@ function renderCard(team) {
         <span class="side-tag aff">AFF ${sd.aff}</span>
         <span class="side-tag neg">NEG ${sd.neg}</span>
         ${nextSide.locked ? `<span style="font-size:9px;color:var(--text-muted)">→ Locked ${nextSide.side}</span>` : `<span style="font-size:9px;color:var(--text-muted)">→ Either Side</span>`}
+        ${hasScenario ? `<button class="scenario-clear" onclick="clearScenarios('${esc(team.name).replace(/'/g, "\\'")}')">Clear Scenarios</button>` : ''}
       </div>
     </div>`;
 
@@ -915,10 +977,18 @@ function renderRoundSection(team, rd, past) {
   const actualOpp = past.find(p => p.round === rd);
   const isFuture = !rdResult;
   const isNext = rd === S.curRound + 1;
+  const sc = scenarios[team.name] || {};
+  const scenarioResult = sc[rd]; // 'W', 'L', or undefined
 
-  // Record entering this round
-  const winsEntering = team.rounds.filter(r => r.round < rd && r.result === 'W').length;
-  const lossesEntering = team.rounds.filter(r => r.round < rd && r.result === 'L').length;
+  // Record entering this round (real + scenario)
+  let winsEntering = team.rounds.filter(r => r.round < rd && r.result === 'W').length;
+  let lossesEntering = team.rounds.filter(r => r.round < rd && r.result === 'L').length;
+  for (let r = 1; r < rd; r++) {
+    if (sc[r] && !team.rounds.find(x => x.round === r)) {
+      if (sc[r] === 'W') winsEntering++;
+      else lossesEntering++;
+    }
+  }
   const teamSide = likelySideAsOf(team.name, rd);
 
   // Matchup pool before this round
@@ -927,9 +997,13 @@ function renderRoundSection(team, rd, past) {
   const { pool, pullUp, pullDown } = matchups;
   const totalEligible = pool.length + pullUp.length + pullDown.length;
 
-  const startCollapsed = !isNext;
-  let h = `<div class="round-section${isNext ? ' next-round' : ''}${isFuture && !isNext ? ' future-round' : ''}${startCollapsed ? ' collapsed' : ''}">`;
-  h += `<div class="round-section-header" onclick="this.parentElement.classList.toggle('collapsed')">`;
+  const hasScenario = Object.keys(sc).length > 0;
+  const isProjected = isFuture && (hasScenario || rd > S.curRound + 1);
+  const exp = expandedRounds[team.name] || new Set();
+  const isExpanded = exp.has(rd) || (isNext && !exp.has(-rd));
+  let h = `<div class="round-section${isNext ? ' next-round' : ''}${scenarioResult ? ' scenario-round' : ''}${isFuture && !isNext && !scenarioResult ? ' future-round' : ''}${!isExpanded ? ' collapsed' : ''}">`;
+  const tn = esc(team.name).replace(/'/g, "\\'");
+  h += `<div class="round-section-header" onclick="toggleRound('${tn}',${rd},${isNext})">`;
   h += `<div class="round-section-title">`;
   h += `<span class="round-num">Rd ${rd}</span>`;
   h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering</span>`;
@@ -942,11 +1016,23 @@ function renderRoundSection(team, rd, past) {
     const rc = rdResult.result === 'W' ? 'win' : 'loss';
     h += `<span class="round-result ${rc}">${rdResult.result} ${rdResult.ballots}blt</span>`;
     if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)} <span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span></span>`;
+  } else if (scenarioResult) {
+    const rc = scenarioResult === 'W' ? 'win' : 'loss';
+    h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult}</span>`;
   } else if (isNext) {
     h += `<span class="round-result pending-label">NEXT</span>`;
   } else {
     h += `<span class="round-result pending-label">—</span>`;
   }
+
+  // W/L scenario toggle buttons for future rounds
+  if (isFuture) {
+    h += `<span class="scenario-toggles" onclick="event.stopPropagation()">`;
+    h += `<button class="scenario-btn scenario-w${scenarioResult === 'W' ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'W')" title="Project a win">W</button>`;
+    h += `<button class="scenario-btn scenario-l${scenarioResult === 'L' ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'L')" title="Project a loss">L</button>`;
+    h += `</span>`;
+  }
+
   h += `</div>`;
   const poolLabel = isPowerMatched
     ? `${pool.length} in bracket` + (pullUp.length || pullDown.length ? ` + ${pullUp.length + pullDown.length} adj` : '')
@@ -957,10 +1043,10 @@ function renderRoundSection(team, rd, past) {
   // Matchup table
   if (totalEligible > 0) {
     h += `<div class="round-section-body">`;
-    if (!isPowerMatched) {
+    if (!isPowerMatched && isFuture) {
       h += `<div class="no-matchups" style="margin-bottom:6px">Pre-set pairing (power matching begins after Rd 2)</div>`;
-    } else if (rd > S.curRound + 1) {
-      h += `<div class="no-matchups" style="margin-bottom:6px">Projected from current ${winsEntering}-${lossesEntering} record</div>`;
+    } else if (isProjected && isPowerMatched) {
+      h += `<div class="no-matchups" style="margin-bottom:6px">Projected at ${winsEntering}-${lossesEntering}${hasScenario ? ' (scenario)' : ''}</div>`;
     }
     h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups.fullBracketSize);
     h += `</div>`;
