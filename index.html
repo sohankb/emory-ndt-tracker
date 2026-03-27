@@ -1190,9 +1190,13 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
       return teams.map(() => uniform);
     }
     // Power-matched: exponential decay from favored boundary
+    // Distance based on ballot rank, not index — teams with same ballots get same weight
     const decay = 0.4;
-    const weights = teams.map((_, i) => {
-      const dist = favorTop ? i : (teams.length - 1 - i);
+    const sortedBlts = teams.map(t => t.ballotsAsOf);
+    const uniqueBlts = [...new Set(sortedBlts)].sort((a, b) => b - a); // desc
+    const weights = teams.map(t => {
+      const rank = uniqueBlts.indexOf(t.ballotsAsOf);
+      const dist = favorTop ? rank : (uniqueBlts.length - 1 - rank);
       return Math.pow(decay, dist);
     });
     const wSum = weights.reduce((a, b) => a + b, 0);
