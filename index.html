@@ -168,7 +168,8 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .pull-label.pull-down{color:var(--text-dim);background:var(--neg-color)}
 .pull-divider td{font-size:9px;font-family:'Open Sans',sans-serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:700}
 .emory-card{box-shadow:0 1px 3px rgba(0,0,0,0.06)}
-.scenario-toggles{display:inline-flex;gap:2px;margin-left:8px}
+.scenario-toggles{display:inline-flex;gap:2px;margin-left:8px;align-items:center}
+.scenario-label{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-right:4px}
 .scenario-btn{padding:2px 5px;height:22px;font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .15s;line-height:1;white-space:nowrap}
 .scenario-btn:hover{border-color:var(--border-accent);color:var(--text)}
 .scenario-btn.scenario-w.active{background:var(--win-bg);color:var(--win);border-color:var(--win)}
@@ -1074,7 +1075,7 @@ function renderRoundSection(team, rd, past) {
   // W/L scenario toggle buttons with ballot counts for future rounds
   if (isFuture) {
     const sr = scenarioResult;
-    h += `<span class="scenario-toggles" onclick="event.stopPropagation()">`;
+    h += `<span class="scenario-toggles" onclick="event.stopPropagation()"><span class="scenario-label">Projection</span>`;
     h += `<button class="scenario-btn scenario-w${sr && sr.result==='W' && sr.ballots===3 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'W',3)" title="Win 3-0">3‑0</button>`;
     h += `<button class="scenario-btn scenario-w${sr && sr.result==='W' && sr.ballots===2 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'W',2)" title="Win 2-1">2‑1</button>`;
     h += `<button class="scenario-btn scenario-l${sr && sr.result==='L' && sr.ballots===1 ? ' active' : ''}" onclick="toggleScenario('${tn}',${rd},'L',1)" title="Loss 1-2">1‑2</button>`;
