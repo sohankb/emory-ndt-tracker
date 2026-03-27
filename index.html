@@ -121,6 +121,35 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .standings-table .tn{color:var(--text);font-weight:500}
 .standings-table .emory-row td{background:var(--emory-blue-dim)}
 .standings-table .emory-row .tn{color:var(--emory-blue);font-weight:700}
+.field-pred-section{margin-top:24px;border-top:1px solid var(--border);padding-top:20px}
+.field-pred-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer;user-select:none}
+.field-pred-header h2{font-family:'Crimson Pro',serif;font-size:24px;font-weight:200;letter-spacing:-0.03em;color:var(--text-dim)}
+.field-pred-toggle{font-size:10px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em}
+.field-pred-body{display:none}
+.field-pred-body.open{display:block}
+.field-pred-search{width:100%;padding:8px 12px;font-family:'Open Sans',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);margin-bottom:12px;outline:none}
+.field-pred-search:focus{border-color:var(--emory-blue)}
+.field-pred-count{font-family:'Open Sans',sans-serif;font-size:10px;font-weight:600;color:var(--text-muted);margin-left:8px}
+.field-pred-clear{font-size:10px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--loss);cursor:pointer;background:none;border:1px solid var(--loss-bg);border-radius:4px;padding:2px 8px;margin-left:8px}
+.field-pred-clear:hover{background:var(--loss-bg)}
+.field-pred-bracket{margin-bottom:12px}
+.field-pred-bracket-header{font-family:'Open Sans',sans-serif;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:4px}
+.field-pred-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(216,220,227,0.5);font-size:12px}
+.field-pred-row:hover{background:var(--surface-hover)}
+.field-pred-name{flex:1;font-weight:500;color:var(--text);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.field-pred-record{font-family:'Open Sans',sans-serif;font-size:10px;font-weight:700;color:var(--text-muted);min-width:40px}
+.field-pred-rounds{display:flex;gap:2px;align-items:center}
+.field-pred-rd-label{font-size:9px;color:var(--text-muted);font-weight:600;width:22px;text-align:center}
+.field-pred-btns{display:flex;gap:2px}
+.field-pred-btn{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;padding:2px 5px;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;line-height:1}
+.field-pred-btn:hover{border-color:var(--border-accent)}
+.field-pred-btn.fp-w{color:var(--win)}
+.field-pred-btn.fp-l{color:var(--loss)}
+.field-pred-btn.fp-w.active{background:var(--win-bg);border-color:var(--win)}
+.field-pred-btn.fp-l.active{background:var(--loss-bg);border-color:var(--loss)}
+.field-pred-dots{display:flex;gap:2px;align-items:center;margin-right:4px}
+.field-pred-limit{font-size:10px;color:var(--text-muted);text-align:center;padding:8px 0;cursor:pointer}
+.field-pred-limit:hover{color:var(--emory-blue)}
 .error-banner{background:var(--loss-bg);border:1px solid rgba(209,65,36,0.3);border-radius:6px;padding:14px 18px;margin-top:16px;color:var(--loss);font-size:12px;line-height:1.6}
 .loading-state{text-align:center;padding:60px 20px;color:var(--text-muted);font-size:12px}
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--emory-blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
@@ -234,6 +263,8 @@ let activeTab = null; // currently selected Emory team name, null = first
 let standingsOpen = false; // persists across re-renders
 let scenarios = {}; // teamName -> { roundNum: 'W'|'L' } — hypothetical projections
 let expandedRounds = {}; // teamName -> Set of expanded round numbers
+let fieldPredOpen = false; // field predictions panel toggle
+let fieldSearch = ''; // search filter for field predictions
 
 let S = {
   teams: [],
@@ -951,6 +982,7 @@ function render() {
   h += '</div>';
 
   h += renderCard(selected);
+  h += renderFieldPredictions();
   h += renderStandings();
   const scrollY = window.scrollY;
   document.getElementById('content').innerHTML = h;
@@ -1237,6 +1269,139 @@ function renderRoundNav() {
     h += `<button class="${c}" title="${has ? (S.pairings[r].length + ' pairings') : 'No data'}">${has ? '✓ ' : ''}Rd ${r}</button>`;
   }
   document.getElementById('roundNav').innerHTML = h;
+}
+
+function toggleFieldPred() {
+  fieldPredOpen = !fieldPredOpen;
+  const b = document.getElementById('fpBody');
+  const t = document.getElementById('fpToggle');
+  if (b) b.classList.toggle('open', fieldPredOpen);
+  if (t) t.textContent = fieldPredOpen ? 'Hide ▲' : 'Show ▼';
+}
+
+function updateFieldSearch(val) {
+  fieldSearch = val.toLowerCase();
+  const inner = document.getElementById('fpInner');
+  if (inner) inner.innerHTML = renderFieldPredInner();
+}
+
+function toggleFieldScenario(teamName, rd, result, ballots) {
+  if (!scenarios[teamName]) scenarios[teamName] = {};
+  const cur = scenarios[teamName][rd];
+  if (cur && cur.result === result && cur.ballots === ballots) {
+    delete scenarios[teamName][rd];
+    for (let r = rd + 1; r <= 8; r++) delete scenarios[teamName][r];
+  } else {
+    scenarios[teamName][rd] = { result, ballots };
+  }
+  render();
+}
+
+function clearFieldPredictions() {
+  const emoryTeams = new Set(S.teams.filter(t => t.school === EMORY).map(t => t.name));
+  for (const name of Object.keys(scenarios)) {
+    if (!emoryTeams.has(name)) delete scenarios[name];
+  }
+  render();
+}
+
+function countFieldPredictions() {
+  const emoryTeams = new Set(S.teams.filter(t => t.school === EMORY).map(t => t.name));
+  let count = 0;
+  for (const [name, sc] of Object.entries(scenarios)) {
+    if (!emoryTeams.has(name)) count += Object.keys(sc).length;
+  }
+  return count;
+}
+
+function renderFieldPredInner() {
+  const emoryTeams = new Set(S.teams.filter(t => t.school === EMORY).map(t => t.name));
+  let allTeams = S.teams.filter(t => !emoryTeams.has(t.name));
+
+  if (fieldSearch) {
+    allTeams = allTeams.filter(t => t.name.toLowerCase().includes(fieldSearch));
+  }
+
+  // Group by record
+  const groups = {};
+  for (const t of allTeams) {
+    const l = t.rounds.length - t.wins;
+    const key = `${t.wins}-${l}`;
+    if (!groups[key]) groups[key] = { wins: t.wins, losses: l, teams: [] };
+    groups[key].teams.push(t);
+  }
+
+  // Sort groups by wins desc, then losses asc
+  const sortedGroups = Object.values(groups).sort((a, b) =>
+    b.wins !== a.wins ? b.wins - a.wins : a.losses - b.losses
+  );
+
+  let h = '';
+  for (const g of sortedGroups) {
+    g.teams.sort((a, b) => b.ballots !== a.ballots ? b.ballots - a.ballots : a.name.localeCompare(b.name));
+    h += `<div class="field-pred-bracket">`;
+    h += `<div class="field-pred-bracket-header">${g.wins}-${g.losses} (${g.teams.length} teams)</div>`;
+    for (const t of g.teams) {
+      const sc = scenarios[t.name] || {};
+      // Find this team's next unplayed round
+      const maxPlayed = t.rounds.length > 0 ? Math.max(...t.rounds.map(r => r.round)) : 0;
+      h += `<div class="field-pred-row">`;
+      h += `<span class="field-pred-name" title="${esc(t.name)}">${esc(t.name)}</span>`;
+      h += `<span class="field-pred-record">${t.ballots} blt</span>`;
+      // Show completed round dots
+      h += `<span class="field-pred-dots">`;
+      for (let r = 1; r <= maxPlayed; r++) {
+        const rd = t.rounds.find(x => x.round === r);
+        if (rd) {
+          const rc = rd.result === 'W' ? 'result-w' : 'result-l';
+          h += `<span class="rd-badge ${rc}" style="height:18px;font-size:9px;padding:0 4px">${rd.result}</span>`;
+        }
+      }
+      h += `</span>`;
+      // Show prediction buttons for future rounds
+      h += `<span class="field-pred-rounds">`;
+      for (let r = maxPlayed + 1; r <= 8; r++) {
+        const sr = sc[r];
+        const tn = esc(t.name).replace(/'/g, "\\'");
+        h += `<span class="field-pred-rd-label">R${r}</span>`;
+        h += `<span class="field-pred-btns">`;
+        h += `<button class="field-pred-btn fp-w${sr && sr.result==='W' && sr.ballots===3 ? ' active' : ''}" onclick="toggleFieldScenario('${tn}',${r},'W',3)">3-0</button>`;
+        h += `<button class="field-pred-btn fp-w${sr && sr.result==='W' && sr.ballots===2 ? ' active' : ''}" onclick="toggleFieldScenario('${tn}',${r},'W',2)">2-1</button>`;
+        h += `<button class="field-pred-btn fp-l${sr && sr.result==='L' && sr.ballots===1 ? ' active' : ''}" onclick="toggleFieldScenario('${tn}',${r},'L',1)">1-2</button>`;
+        h += `<button class="field-pred-btn fp-l${sr && sr.result==='L' && sr.ballots===0 ? ' active' : ''}" onclick="toggleFieldScenario('${tn}',${r},'L',0)">0-3</button>`;
+        h += `</span>`;
+        // Only show next unplayed round by default (keep it clean)
+        if (!sr) break;
+      }
+      h += `</span>`;
+      h += `</div>`;
+    }
+    h += `</div>`;
+  }
+
+  if (allTeams.length === 0) {
+    h += `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">${fieldSearch ? 'No teams match your search' : 'No teams loaded'}</div>`;
+  }
+
+  return h;
+}
+
+function renderFieldPredictions() {
+  const fpCount = countFieldPredictions();
+  return `
+  <div class="field-pred-section">
+    <div class="field-pred-header" onclick="toggleFieldPred()">
+      <h2>Field Predictions${fpCount > 0 ? `<span class="field-pred-count">${fpCount} prediction${fpCount !== 1 ? 's' : ''}</span>` : ''}</h2>
+      <span>
+        ${fpCount > 0 ? `<button class="field-pred-clear" onclick="event.stopPropagation();clearFieldPredictions()">Clear All</button>` : ''}
+        <span class="field-pred-toggle" id="fpToggle">${fieldPredOpen ? 'Hide ▲' : 'Show ▼'}</span>
+      </span>
+    </div>
+    <div class="field-pred-body${fieldPredOpen ? ' open' : ''}" id="fpBody">
+      <input class="field-pred-search" type="text" placeholder="Search teams…" value="${esc(fieldSearch)}" oninput="updateFieldSearch(this.value)">
+      <div id="fpInner">${renderFieldPredInner()}</div>
+    </div>
+  </div>`;
 }
 
 function renderStandings() {
