@@ -835,9 +835,8 @@ function getMatchupsAsOf(team, rd) {
   // Past opponents before this round
   const pastSet = new Set((S.pastOpps[team.name] || []).filter(p => p.round < rd).map(o => o.opp));
 
-  // Side constraint (power-matched rounds only): can't pair two teams locked on the same side
-  const isPowerRound = rd > 2;
-  const mySide = isPowerRound ? likelySideAsOf(team.name, rd) : { locked: false };
+  // Side constraint: can't pair two teams locked on the same side
+  const mySide = likelySideAsOf(team.name, rd);
 
   // Filter eligible teams for a given win bracket
   function eligible(wins) {
