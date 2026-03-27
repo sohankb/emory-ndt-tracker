@@ -633,13 +633,20 @@ const ABBREVS = {
   'NU': 'Northwestern', 'GMU': 'George Mason', 'USC': 'Southern California',
   'Cal': 'UC Berkeley', 'UGA': 'Georgia', 'MSU': 'Michigan State',
   'WKU': 'Western Kentucky', 'JMU': 'James Madison', 'KSU': 'Kansas State',
-  'KState': 'Kansas State', 'UTD': 'UTD', 'UCO': 'Central Oklahoma',
+  'KState': 'Kansas State', 'K State': 'Kansas State', 'K-State': 'Kansas State',
+  'UTD': 'UTD', 'UCO': 'Central Oklahoma',
   'CSULB': 'CSU Long Beach', 'UMass': 'Massachusetts Amherst',
-  'UMich': 'Michigan', 'Mich': 'Michigan',
+  'UMich': 'Michigan', 'Mich': 'Michigan', 'Mich St': 'Michigan State',
   'Dart': 'Dartmouth', 'OU': 'Oklahoma', 'UNI': 'Northern Iowa',
-  'GTown': 'Georgetown', 'MoState': 'MoState', 'Bing': 'Binghamton',
+  'GTown': 'Georgetown', 'Gtown': 'Georgetown',
+  'MoState': 'MoState', 'Mo St': 'MoState',
+  'Bing': 'Binghamton',
   'Wyo': 'Wyoming', 'Wake': 'Wake Forest', 'UTSA': 'UT San Antonio',
-  'IU': 'Indiana',
+  'IU': 'Indiana', 'Indiana': 'Indiana',
+  'UNT': 'North Texas', 'Minnesota': 'Minnesota',
+  'Western KY': 'Western Kentucky', 'Lbierty': 'Liberty',
+  'Mason': 'George Mason', 'Mac': 'Macalester',
+  'Wichita State': 'Wichita State',
 };
 
 function buildNameMap() {
@@ -672,19 +679,34 @@ function resolveName(n) {
       // Exact school + code match
       const match = S.teams.find(t => t.school === fullSchool && t.code === code);
       if (match) { S.nameMap[n] = match.name; return match.name; }
-      // Fuzzy: same school, closest code (handles typos like "DV" for "DE")
+      // Fuzzy matching for school with multiple teams
       const sameSchool = S.teams.filter(t => t.school === fullSchool);
       if (sameSchool.length === 1) {
-        // Only one team from this school — must be them
         dbg(`Fuzzy match: "${n}" → "${sameSchool[0].name}" (only team from ${fullSchool})`);
         S.nameMap[n] = sameSchool[0].name;
         return sameSchool[0].name;
       }
       if (sameSchool.length === 0) {
-        // School known but has no teams in standings — not a participant, skip silently
         dbg(`Skipping "${n}": ${fullSchool} has no teams in standings`);
         S.nameMap[n] = null;
         return null;
+      }
+      // Try reversed initials (e.g. "BR" → "RB", "FT" → "TF")
+      if (code.length === 2) {
+        const rev = code[1] + code[0];
+        const revMatch = sameSchool.find(t => t.code === rev);
+        if (revMatch) {
+          dbg(`Reversed-initials match: "${n}" → "${revMatch.name}" (${code} → ${rev})`);
+          S.nameMap[n] = revMatch.name;
+          return revMatch.name;
+        }
+      }
+      // Try matching first letter only (e.g. "HP" → "HU" when only one H-team)
+      const firstLetterMatches = sameSchool.filter(t => t.code && t.code[0] === code[0]);
+      if (firstLetterMatches.length === 1) {
+        dbg(`First-letter match: "${n}" → "${firstLetterMatches[0].name}" (${code} → ${firstLetterMatches[0].code})`);
+        S.nameMap[n] = firstLetterMatches[0].name;
+        return firstLetterMatches[0].name;
       }
     }
   }
