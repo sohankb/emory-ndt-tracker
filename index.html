@@ -921,11 +921,9 @@ function renderRoundSection(team, rd, past) {
   const lossesEntering = team.rounds.filter(r => r.round < rd && r.result === 'L').length;
   const teamSide = likelySideAsOf(team.name, rd);
 
-  // Matchup pool before this round (power matching only after round 2)
-  // Only compute for completed rounds and the next round — future rounds beyond next have unknown records
+  // Matchup pool before this round
   const isPowerMatched = rd > 2;
-  const canCompute = isPowerMatched && (rd <= S.curRound + 1);
-  const matchups = canCompute ? getMatchupsAsOf(team, rd) : { pool: [], pullUp: [], pullDown: [] };
+  const matchups = getMatchupsAsOf(team, rd);
   const { pool, pullUp, pullDown } = matchups;
   const totalEligible = pool.length + pullUp.length + pullDown.length;
 
@@ -950,17 +948,23 @@ function renderRoundSection(team, rd, past) {
     h += `<span class="round-result pending-label">—</span>`;
   }
   h += `</div>`;
-  h += `<span class="round-pool-count">${canCompute ? `${pool.length} in bracket` + (pullUp.length || pullDown.length ? ` + ${pullUp.length + pullDown.length} adj` : '') : (rd <= 2 ? 'pre-set' : '')}</span>`;
+  const poolLabel = isPowerMatched
+    ? `${pool.length} in bracket` + (pullUp.length || pullDown.length ? ` + ${pullUp.length + pullDown.length} adj` : '')
+    : `${totalEligible} eligible`;
+  h += `<span class="round-pool-count">${totalEligible > 0 ? poolLabel : ''}</span>`;
   h += `</div>`;
 
   // Matchup table
-  if (canCompute && totalEligible > 0) {
+  if (totalEligible > 0) {
     h += `<div class="round-section-body">`;
+    if (!isPowerMatched) {
+      h += `<div class="no-matchups" style="margin-bottom:6px">Pre-set pairing (power matching begins after Rd 2)</div>`;
+    } else if (rd > S.curRound + 1) {
+      h += `<div class="no-matchups" style="margin-bottom:6px">Projected from current ${winsEntering}-${lossesEntering} record</div>`;
+    }
     h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups.fullBracketSize);
     h += `</div>`;
-  } else if (!isPowerMatched && !isFuture) {
-    h += `<div class="round-section-body"><div class="no-matchups">Pre-set pairing (power matching begins after Rd 2)</div></div>`;
-  } else if (canCompute) {
+  } else {
     h += `<div class="round-section-body"><div class="no-matchups">No eligible opponents at ${winsEntering}-${lossesEntering} or adjacent brackets</div></div>`;
   }
 
