@@ -1114,112 +1114,52 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
   h += '<th>Team</th><th>Record</th><th>Blt</th><th>Their Side</th><th>Prob</th><th></th>';
   h += '</tr></thead><tbody>';
 
-  // For pre-set rounds (R1-R2): all eligible opponents uniform probability regardless of record
-  // For power-matched rounds (R3+): bracket-based probability model
+  // Probability model: uniform within bracket, small fixed pull chance for adjacent brackets
+  // We don't have speaker points, so we can't predict exact fold pairing order.
+  // Instead: same-bracket opponents get equal probability, with a small pull chance
+  // distributed uniformly across adjacent bracket opponents.
   const adjTotal = pullUp.length + pullDown.length;
-  const allEligible = pool.length + adjTotal;
 
   let pStayInBracket, pPullUp = 0, pPullDown = 0;
-  if (!isPowerMatched) {
-    // Pre-set: flat uniform across all eligible opponents
-    pStayInBracket = allEligible > 0 ? pool.length / allEligible : 1;
-    pPullUp = allEligible > 0 ? pullUp.length / allEligible : 0;
-    pPullDown = allEligible > 0 ? pullDown.length / allEligible : 0;
-  } else {
-    // Power-matched: bracket oddness determines pull probability
+  if (pool.length === 0) {
+    // Must be pulled — distribute uniformly across adjacent
+    pStayInBracket = 0;
+    const total = adjTotal || 1;
+    pPullUp = pullUp.length / total;
+    pPullDown = pullDown.length / total;
+  } else if (isPowerMatched && adjTotal > 0) {
+    // Power-matched: small pull chance based on bracket oddness
     const bracketOdd = fullBracketSize % 2 === 1;
-    const aboveOdd = aboveBracketSize % 2 === 1;
-    const belowOdd = belowBracketSize % 2 === 1;
-    let pPulled;
-    if (pool.length === 0) {
-      pStayInBracket = 0;
-      pPulled = 1;
-    } else if (bracketOdd && adjTotal > 0) {
-      pPulled = 1 / fullBracketSize;
-      pStayInBracket = 1 - pPulled;
-    } else if (adjTotal > 0 && (aboveOdd || belowOdd)) {
-      pPulled = 1 / (2 * fullBracketSize);
-      pStayInBracket = 1 - pPulled;
-    } else if (adjTotal > 0) {
-      pPulled = 1 / (4 * fullBracketSize);
-      pStayInBracket = 1 - pPulled;
-    } else {
-      pStayInBracket = 1;
-      pPulled = 0;
-    }
-    // Split pPulled between pullUp and pullDown
+    const pPulled = bracketOdd ? (1 / fullBracketSize) : (1 / (2 * fullBracketSize));
+    pStayInBracket = 1 - pPulled;
     if (pullUp.length > 0 && pullDown.length > 0) {
       pPullUp = pPulled / 2;
       pPullDown = pPulled / 2;
     } else if (pullUp.length > 0) {
       pPullUp = pPulled;
-    } else if (pullDown.length > 0) {
+    } else {
       pPullDown = pPulled;
     }
+  } else if (!isPowerMatched && adjTotal > 0) {
+    // Pre-set: all opponents equally likely regardless of record
+    const allEligible = pool.length + adjTotal;
+    pStayInBracket = pool.length / allEligible;
+    pPullUp = pullUp.length / allEligible;
+    pPullDown = pullDown.length / allEligible;
+  } else {
+    pStayInBracket = 1;
   }
 
-  // Within-bracket probability distribution
-  // Only use fold pairing weights when we have real entering data (not projected)
-  let poolProbs = [];
-  if (pool.length > 0 && isPowerMatched && !isProjected && team) {
-    // High-low fold pairing: sort bracket by ballots desc, then pair 1 vs N/2+1, 2 vs N/2+2, etc.
-    const fullBracket = [...pool, { name: team.name, ballotsAsOf: ballotsEntering || 0 }]
-      .sort((a, b) => b.ballotsAsOf !== a.ballotsAsOf ? b.ballotsAsOf - a.ballotsAsOf : a.name.localeCompare(b.name));
-    const N = fullBracket.length;
-    const myRank = fullBracket.findIndex(t => t.name === team.name);
-    // High-low fold: top half pairs with bottom half
-    // For even N: rank i pairs with rank i + N/2
-    // For odd N: rank i pairs with rank i + floor(N/2); middle rank (unpaired) gets uniform weights
-    const half = Math.floor(N / 2);
-    let naturalRank;
-    if (N % 2 === 1 && myRank === half) {
-      // Middle team in odd bracket — no natural pair, use uniform
-      naturalRank = -1;
-    } else if (myRank < half) {
-      naturalRank = myRank + half + (N % 2 === 1 ? 1 : 0); // skip middle in odd brackets
-    } else {
-      naturalRank = myRank - half - (N % 2 === 1 && myRank > half ? 1 : 0);
-    }
-    const decay = 0.4;
-    let weights = [];
-    for (const m of pool) {
-      const mRank = fullBracket.findIndex(t => t.name === m.name);
-      if (naturalRank === -1) {
-        weights.push(1); // uniform for middle team
-      } else {
-        const dist = Math.abs(mRank - naturalRank);
-        weights.push(Math.pow(decay, dist));
-      }
-    }
-    const wSum = weights.reduce((a, b) => a + b, 0);
-    poolProbs = weights.map(w => pStayInBracket * (w / wSum) * 100);
-  } else if (pool.length > 0) {
-    const uniform = pStayInBracket * (100 / pool.length);
-    poolProbs = pool.map(() => uniform);
-  }
-
-  // Pull-up/pull-down probability
-  // Power-matched: weight toward boundary teams (bottom of higher bracket, top of lower bracket)
-  // Pre-set: uniform distribution
-  function pullWeights(teams, pDir, favorTop) {
-    if (teams.length === 0) return [];
-    if (!isPowerMatched) {
-      const uniform = pDir * (100 / teams.length);
-      return teams.map(() => uniform);
-    }
-    const decay = 0.4;
-    const sortedBlts = teams.map(t => t.ballotsAsOf);
-    const uniqueBlts = [...new Set(sortedBlts)].sort((a, b) => b - a);
-    const weights = teams.map(t => {
-      const rank = uniqueBlts.indexOf(t.ballotsAsOf);
-      const dist = favorTop ? rank : (uniqueBlts.length - 1 - rank);
-      return Math.pow(decay, dist);
-    });
-    const wSum = weights.reduce((a, b) => a + b, 0);
-    return weights.map(w => pDir * (w / wSum) * 100);
-  }
-  const pullDownProbs = pullWeights(pullDown, pPullDown, false);
-  const pullUpProbs = pullWeights(pullUp, pPullUp, true);
+  // Uniform probability within each group
+  const poolProbs = pool.length > 0
+    ? pool.map(() => pStayInBracket * (100 / pool.length))
+    : [];
+  const pullDownProbs = pullDown.length > 0
+    ? pullDown.map(() => pPullDown * (100 / pullDown.length))
+    : [];
+  const pullUpProbs = pullUp.length > 0
+    ? pullUp.map(() => pPullUp * (100 / pullUp.length))
+    : [];
 
   function renderRows(teams, probs, label) {
     for (let i = 0; i < teams.length; i++) {
