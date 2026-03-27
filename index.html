@@ -858,10 +858,13 @@ function getMatchupsAsOf(team, rd) {
   const pullDown = teamWins < maxWins ? eligible(teamWins + 1) : [];
   const pullUp = teamWins > 0 ? eligible(teamWins - 1) : [];
 
-  // Full bracket count (all teams at this W-L, before filtering for this specific team)
+  // Bracket sizes for probability model
   const fullBracketSize = allTeams.filter(t => t.winsAsOf === teamWins).length;
+  // Check adjacent bracket oddness for cascade probability
+  const aboveBracketSize = teamWins < maxWins ? allTeams.filter(t => t.winsAsOf === teamWins + 1).length : 0;
+  const belowBracketSize = teamWins > 0 ? allTeams.filter(t => t.winsAsOf === teamWins - 1).length : 0;
 
-  return { pool, pullUp, pullDown, fullBracketSize };
+  return { pool, pullUp, pullDown, fullBracketSize, aboveBracketSize, belowBracketSize };
 }
 
 // Compute the side for a team entering round `rd`
@@ -1070,7 +1073,7 @@ function renderRoundSection(team, rd, past) {
     } else if (isProjected && isPowerMatched) {
       h += `<div class="no-matchups" style="margin-bottom:6px">Projected at ${winsEntering}-${lossesEntering}${hasScenario ? ' (scenario)' : ''}</div>`;
     }
-    h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups.fullBracketSize);
+    h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups);
     h += `</div>`;
   } else {
     h += `<div class="round-section-body"><div class="no-matchups">No eligible opponents at ${winsEntering}-${lossesEntering} or adjacent brackets</div></div>`;
@@ -1080,34 +1083,53 @@ function renderRoundSection(team, rd, past) {
   return h;
 }
 
-function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, fullBracketSize) {
+function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchups) {
+  const { fullBracketSize, aboveBracketSize, belowBracketSize } = matchups;
   let h = '<table class="pool-table"><thead><tr>';
   h += '<th>Team</th><th>Record</th><th>Blt</th><th>Their Side</th><th>Prob</th><th></th>';
   h += '</tr></thead><tbody>';
 
   // Probability model:
-  // Use the FULL bracket size (not filtered pool) to determine if a pull is needed.
-  // If full bracket is odd, there's a 1/fullBracketSize chance our team is the odd one out.
-  // Scenario A (prob = (fullBracketSize-1)/fullBracketSize): we stay in bracket → 1/pool.length each
-  // Scenario B (prob = 1/fullBracketSize): we're pulled → 1/adjTotal each
-  // If pool is empty (all bracket opponents are same-school or already faced), we must be pulled.
+  // Primary: if our bracket is odd, 1/fullBracketSize chance we're the leftover → pulled to adjacent.
+  // Cascade: even if our bracket is even, an odd adjacent bracket produces a leftover that may
+  //   land in our bracket, making it effectively odd, which can cascade a pull in our direction.
+  //   We model this as a smaller secondary probability.
   const bracketOdd = fullBracketSize % 2 === 1;
+  const aboveOdd = aboveBracketSize % 2 === 1;
+  const belowOdd = belowBracketSize % 2 === 1;
   const adjTotal = pullUp.length + pullDown.length;
+
   let poolProb, adjProb;
   if (pool.length === 0) {
     // Must be pulled to adjacent bracket
     poolProb = 0;
     adjProb = adjTotal > 0 ? 100 / adjTotal : 0;
   } else if (bracketOdd && adjTotal > 0) {
-    // Odd bracket: chance of being the odd one out
-    const pStay = (fullBracketSize - 1) / fullBracketSize;
+    // Our bracket is odd: direct pull probability
     const pPull = 1 / fullBracketSize;
+    const pStay = 1 - pPull;
     poolProb = pStay * (100 / pool.length);
-    adjProb = pPull * (adjTotal > 0 ? 100 / adjTotal : 0);
+    adjProb = pPull * (100 / adjTotal);
+  } else if (adjTotal > 0 && (aboveOdd || belowOdd)) {
+    // Our bracket is even BUT an adjacent bracket is odd → cascade probability.
+    // The odd adjacent bracket sends one team our way, making our bracket odd,
+    // which then may force one of us out. Approximate as 1/(2*fullBracketSize).
+    const pCascade = 1 / (2 * fullBracketSize);
+    const pStay = 1 - pCascade;
+    poolProb = pStay * (100 / pool.length);
+    adjProb = pCascade * (100 / adjTotal);
   } else {
-    // Even bracket or no adjacent teams: simple uniform within bracket
-    poolProb = pool.length > 0 ? 100 / pool.length : 0;
-    adjProb = 0;
+    // Even bracket, even adjacent brackets: very low but nonzero pull chance
+    // from further-away brackets cascading (model as minimal baseline)
+    if (adjTotal > 0) {
+      const pBaseline = 1 / (4 * fullBracketSize);
+      const pStay = 1 - pBaseline;
+      poolProb = pStay * (100 / pool.length);
+      adjProb = pBaseline * (100 / adjTotal);
+    } else {
+      poolProb = pool.length > 0 ? 100 / pool.length : 0;
+      adjProb = 0;
+    }
   }
 
   function renderRows(teams, prob, label) {
