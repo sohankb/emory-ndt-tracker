@@ -1141,40 +1141,55 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
     pPulled = 0;
   }
 
+  // Split pPulled between pullUp and pullDown so total sums to 100%
+  // If both directions exist, split equally; if only one, it gets all of pPulled
+  let pPullUp = 0, pPullDown = 0;
+  if (pullUp.length > 0 && pullDown.length > 0) {
+    pPullUp = pPulled / 2;
+    pPullDown = pPulled / 2;
+  } else if (pullUp.length > 0) {
+    pPullUp = pPulled;
+  } else if (pullDown.length > 0) {
+    pPullDown = pPulled;
+  }
+
   // Within-bracket probability distribution
   // For power-matched rounds (R3+): high-low fold pairing weighted by rank proximity
   // For pre-set rounds (R1-R2): uniform distribution
-  let poolProbs = []; // per-team probability for pool members
+  let poolProbs = [];
   if (pool.length > 0 && isPowerMatched && team) {
     // High-low fold pairing: sort bracket by ballots desc, then pair 1 vs N/2+1, 2 vs N/2+2, etc.
-    // Insert our team into the pool to find our rank, then compute natural opponent.
     const fullBracket = [...pool, { name: team.name, ballotsAsOf: ballotsEntering || 0 }]
       .sort((a, b) => b.ballotsAsOf !== a.ballotsAsOf ? b.ballotsAsOf - a.ballotsAsOf : a.name.localeCompare(b.name));
     const N = fullBracket.length;
     const myRank = fullBracket.findIndex(t => t.name === team.name);
-    // Natural opponent rank in high-low fold: top half pairs with bottom half
-    // In a bracket of N, rank 0 pairs with rank ceil(N/2), rank 1 with ceil(N/2)+1, etc.
-    const half = Math.ceil(N / 2);
+    // High-low fold: top half pairs with bottom half
+    // For even N: rank i pairs with rank i + N/2
+    // For odd N: rank i pairs with rank i + floor(N/2); middle rank (unpaired) gets uniform weights
+    const half = Math.floor(N / 2);
     let naturalRank;
-    if (myRank < half) {
-      naturalRank = Math.min(myRank + half, N - 1); // clamp for odd brackets
+    if (N % 2 === 1 && myRank === half) {
+      // Middle team in odd bracket — no natural pair, use uniform
+      naturalRank = -1;
+    } else if (myRank < half) {
+      naturalRank = myRank + half + (N % 2 === 1 ? 1 : 0); // skip middle in odd brackets
     } else {
-      naturalRank = myRank - half; // bottom half → pair with top half
+      naturalRank = myRank - half - (N % 2 === 1 && myRank > half ? 1 : 0);
     }
-    // Assign weights based on distance from natural opponent in the bracket
-    // Closer = more likely (constraints cause swaps to nearby teams)
-    // Use exponential decay: weight = decay^distance
     const decay = 0.4;
     let weights = [];
     for (const m of pool) {
       const mRank = fullBracket.findIndex(t => t.name === m.name);
-      const dist = Math.abs(mRank - naturalRank);
-      weights.push(Math.pow(decay, dist));
+      if (naturalRank === -1) {
+        weights.push(1); // uniform for middle team
+      } else {
+        const dist = Math.abs(mRank - naturalRank);
+        weights.push(Math.pow(decay, dist));
+      }
     }
     const wSum = weights.reduce((a, b) => a + b, 0);
     poolProbs = weights.map(w => pStayInBracket * (w / wSum) * 100);
   } else if (pool.length > 0) {
-    // Uniform distribution for pre-set rounds
     const uniform = pStayInBracket * (100 / pool.length);
     poolProbs = pool.map(() => uniform);
   }
@@ -1182,28 +1197,25 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
   // Pull-up/pull-down probability
   // Power-matched: weight toward boundary teams (bottom of higher bracket, top of lower bracket)
   // Pre-set: uniform distribution
-  function pullWeights(teams, favorTop) {
+  function pullWeights(teams, pDir, favorTop) {
     if (teams.length === 0) return [];
     if (!isPowerMatched) {
-      // Pre-set rounds: any team equally likely to be pulled
-      const uniform = pPulled * (100 / teams.length);
+      const uniform = pDir * (100 / teams.length);
       return teams.map(() => uniform);
     }
-    // Power-matched: exponential decay from favored boundary
-    // Distance based on ballot rank, not index — teams with same ballots get same weight
     const decay = 0.4;
     const sortedBlts = teams.map(t => t.ballotsAsOf);
-    const uniqueBlts = [...new Set(sortedBlts)].sort((a, b) => b - a); // desc
+    const uniqueBlts = [...new Set(sortedBlts)].sort((a, b) => b - a);
     const weights = teams.map(t => {
       const rank = uniqueBlts.indexOf(t.ballotsAsOf);
       const dist = favorTop ? rank : (uniqueBlts.length - 1 - rank);
       return Math.pow(decay, dist);
     });
     const wSum = weights.reduce((a, b) => a + b, 0);
-    return weights.map(w => pPulled * (w / wSum) * 100);
+    return weights.map(w => pDir * (w / wSum) * 100);
   }
-  const pullDownProbs = pullWeights(pullDown, false);
-  const pullUpProbs = pullWeights(pullUp, true);
+  const pullDownProbs = pullWeights(pullDown, pPullDown, false);
+  const pullUpProbs = pullWeights(pullUp, pPullUp, true);
 
   function renderRows(teams, probs, label) {
     for (let i = 0; i < teams.length; i++) {
