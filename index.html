@@ -1114,48 +1114,51 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
   h += '<th>Team</th><th>Record</th><th>Blt</th><th>Their Side</th><th>Prob</th><th></th>';
   h += '</tr></thead><tbody>';
 
-  // Pull probability model:
-  // Primary: if our bracket is odd, 1/fullBracketSize chance we're the leftover → pulled to adjacent.
-  // Cascade: even if our bracket is even, an odd adjacent bracket produces a leftover that may
-  //   land in our bracket, making it effectively odd, which can cascade a pull in our direction.
-  const bracketOdd = fullBracketSize % 2 === 1;
-  const aboveOdd = aboveBracketSize % 2 === 1;
-  const belowOdd = belowBracketSize % 2 === 1;
+  // For pre-set rounds (R1-R2): all eligible opponents uniform probability regardless of record
+  // For power-matched rounds (R3+): bracket-based probability model
   const adjTotal = pullUp.length + pullDown.length;
+  const allEligible = pool.length + adjTotal;
 
-  let pStayInBracket, pPulled;
-  if (pool.length === 0) {
-    pStayInBracket = 0;
-    pPulled = 1;
-  } else if (bracketOdd && adjTotal > 0) {
-    pPulled = 1 / fullBracketSize;
-    pStayInBracket = 1 - pPulled;
-  } else if (adjTotal > 0 && (aboveOdd || belowOdd)) {
-    pPulled = 1 / (2 * fullBracketSize);
-    pStayInBracket = 1 - pPulled;
-  } else if (adjTotal > 0) {
-    pPulled = 1 / (4 * fullBracketSize);
-    pStayInBracket = 1 - pPulled;
+  let pStayInBracket, pPullUp = 0, pPullDown = 0;
+  if (!isPowerMatched) {
+    // Pre-set: flat uniform across all eligible opponents
+    pStayInBracket = allEligible > 0 ? pool.length / allEligible : 1;
+    pPullUp = allEligible > 0 ? pullUp.length / allEligible : 0;
+    pPullDown = allEligible > 0 ? pullDown.length / allEligible : 0;
   } else {
-    pStayInBracket = 1;
-    pPulled = 0;
-  }
-
-  // Split pPulled between pullUp and pullDown so total sums to 100%
-  // If both directions exist, split equally; if only one, it gets all of pPulled
-  let pPullUp = 0, pPullDown = 0;
-  if (pullUp.length > 0 && pullDown.length > 0) {
-    pPullUp = pPulled / 2;
-    pPullDown = pPulled / 2;
-  } else if (pullUp.length > 0) {
-    pPullUp = pPulled;
-  } else if (pullDown.length > 0) {
-    pPullDown = pPulled;
+    // Power-matched: bracket oddness determines pull probability
+    const bracketOdd = fullBracketSize % 2 === 1;
+    const aboveOdd = aboveBracketSize % 2 === 1;
+    const belowOdd = belowBracketSize % 2 === 1;
+    let pPulled;
+    if (pool.length === 0) {
+      pStayInBracket = 0;
+      pPulled = 1;
+    } else if (bracketOdd && adjTotal > 0) {
+      pPulled = 1 / fullBracketSize;
+      pStayInBracket = 1 - pPulled;
+    } else if (adjTotal > 0 && (aboveOdd || belowOdd)) {
+      pPulled = 1 / (2 * fullBracketSize);
+      pStayInBracket = 1 - pPulled;
+    } else if (adjTotal > 0) {
+      pPulled = 1 / (4 * fullBracketSize);
+      pStayInBracket = 1 - pPulled;
+    } else {
+      pStayInBracket = 1;
+      pPulled = 0;
+    }
+    // Split pPulled between pullUp and pullDown
+    if (pullUp.length > 0 && pullDown.length > 0) {
+      pPullUp = pPulled / 2;
+      pPullDown = pPulled / 2;
+    } else if (pullUp.length > 0) {
+      pPullUp = pPulled;
+    } else if (pullDown.length > 0) {
+      pPullDown = pPulled;
+    }
   }
 
   // Within-bracket probability distribution
-  // For power-matched rounds (R3+): high-low fold pairing weighted by rank proximity
-  // For pre-set rounds (R1-R2): uniform distribution
   let poolProbs = [];
   if (pool.length > 0 && isPowerMatched && team) {
     // High-low fold pairing: sort bracket by ballots desc, then pair 1 vs N/2+1, 2 vs N/2+2, etc.
