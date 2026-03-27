@@ -887,8 +887,8 @@ function getMatchupsAsOf(team, rd) {
 
 // Compute the side for a team entering round `rd`
 // Returns { side: 'AFF'|'NEG'|'EITHER', locked: boolean }
-// Accounts for scenario projections: if a team is locked entering a projected round,
-// we infer they debated on that side, updating the count for subsequent rounds.
+// Based only on actual results — scenario projections don't affect side-lock
+// since we don't know what side the team debated on in a projected round.
 function likelySideAsOf(teamName, rd) {
   const pastOpps = (S.pastOpps[teamName] || []).filter(p => p.round < rd);
   let aff = 0, neg = 0;
@@ -896,19 +896,8 @@ function likelySideAsOf(teamName, rd) {
     if (p.side === 'aff') aff++;
     else neg++;
   }
-  // For scenario-projected rounds, infer the side based on the lock entering that round
-  const sc = scenarios[teamName];
-  if (sc) {
-    const team = S.teams.find(t => t.name === teamName);
-    for (let r = 1; r < rd; r++) {
-      if (sc[r] && !(team && team.rounds.find(x => x.round === r))) {
-        // Infer side: if locked, they debate on that side; if either, assume alternation
-        if (aff < neg) aff++;       // locked AFF → debated AFF
-        else if (neg < aff) neg++;   // locked NEG → debated NEG
-        else aff++;                  // either side → assume AFF (arbitrary but consistent)
-      }
-    }
-  }
+  // Note: scenario projections (W/L clicks) do NOT affect side-lock.
+  // We don't know what side the team debated on in a projected round.
   if (aff < neg) return { side: 'AFF', locked: true };
   if (neg < aff) return { side: 'NEG', locked: true };
   return { side: 'EITHER', locked: false };
