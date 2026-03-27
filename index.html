@@ -68,20 +68,21 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .record-badge{padding:2px 8px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.5px}
 .record-wins{background:var(--win-bg);color:var(--win)}
 .record-losses{background:var(--loss-bg);color:var(--loss)}
-.ballot-count{font-size:10px;color:var(--marble);font-weight:700;margin-left:2px}
+.ballot-count{font-size:11px;color:var(--text-dim);background:var(--marble);padding:2px 8px;border-radius:3px;font-weight:700}
 .card-rounds{padding:10px 18px;display:flex;gap:3px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.round-dot-group{display:flex;flex-direction:column;align-items:center;gap:1px}
-.round-dot{width:26px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
+.round-dot-group{display:flex;align-items:center;gap:2px}
+.round-dot{height:20px;padding:0 5px;display:flex;align-items:center;justify-content:center;border-radius:3px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
 .round-dot.win{background:var(--win-bg);color:var(--win);border-color:rgba(0,72,43,0.2)}
 .round-dot.loss{background:var(--loss-bg);color:var(--loss);border-color:rgba(209,65,36,0.2)}
 .round-dot.pending{border-style:dashed;font-size:8px}
-.round-side{font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-.round-side.aff{color:var(--aff-color)}.round-side.neg{color:var(--neg-color)}
-.round-blt{font-size:7px;font-weight:700;color:var(--marble);letter-spacing:.3px}
+.round-side{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:1px 4px;border-radius:2px}
+.round-side.aff{color:var(--text-dim);background:rgba(0,125,186,0.12)}
+.round-side.neg{color:var(--text-dim);background:var(--neg-color)}
+.round-blt{font-size:8px;font-weight:600;color:var(--text-dim);background:var(--marble);padding:1px 4px;border-radius:2px}
 .side-summary{font-size:10px;color:var(--text-muted);margin-left:8px;display:flex;gap:6px;align-items:center}
-.side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:600}
-.side-tag.aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.side-tag.neg{color:var(--neg-color);background:rgba(200,184,241,0.15)}
+.side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:700}
+.side-tag.aff{color:var(--text-dim);background:rgba(0,125,186,0.12)}
+.side-tag.neg{color:var(--text-dim);background:var(--neg-color)}
 .card-past{padding:10px 18px;border-bottom:1px solid var(--border)}
 .section-label{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px}
 .past-chips{display:flex;gap:4px;flex-wrap:wrap}
@@ -101,8 +102,8 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .matchup-record{color:var(--text-dim);font-size:11px;font-weight:600}
 .matchup-ballots{color:var(--text-muted);font-size:9px}
 .matchup-side-hint{font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;letter-spacing:.5px}
-.matchup-side-hint.likely-aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.matchup-side-hint.likely-neg{color:var(--neg-color);background:rgba(200,184,241,0.15)}
+.matchup-side-hint.likely-aff{color:var(--text-dim);background:rgba(0,125,186,0.12)}
+.matchup-side-hint.likely-neg{color:var(--text-dim);background:var(--neg-color)}
 .no-matchups{color:var(--text-muted);font-size:11px;font-style:italic;padding:6px 0}
 .standings-section{margin-top:36px;border-top:1px solid var(--border);padding-top:20px}
 .standings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer;user-select:none}
@@ -144,7 +145,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .round-result{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px}
 .round-result.win{background:var(--win-bg);color:var(--win)}
 .round-result.loss{background:var(--loss-bg);color:var(--loss)}
-.round-blt-label{font-size:10px;font-weight:600;color:var(--marble)}
+.round-blt-label{font-size:10px;font-weight:600;color:var(--text-dim);background:var(--marble);padding:1px 5px;border-radius:2px}
 .round-result.pending-label{color:var(--text-muted);font-weight:600;background:none}
 .next-round .round-result.pending-label{color:var(--emory-blue);font-weight:700}
 .round-actual-opp{font-size:10px;color:var(--text-dim)}
@@ -159,8 +160,8 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .pool-table .tn{color:var(--text);font-weight:500}
 .side-either{font-size:9px;color:var(--text-muted);font-style:italic}
 .pull-label{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-.pull-label.pull-up{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.pull-label.pull-down{color:var(--neg-color);background:rgba(200,184,241,0.15)}
+.pull-label.pull-up{color:var(--text-dim);background:rgba(0,125,186,0.12)}
+.pull-label.pull-down{color:var(--text-dim);background:var(--neg-color)}
 .pull-divider td{font-size:9px;font-family:'Open Sans',sans-serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:700}
 .emory-card{box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .scenario-toggles{display:inline-flex;gap:2px;margin-left:8px}
@@ -990,10 +991,8 @@ function renderCard(team) {
     <div class="card-header">
       <div class="card-team-name">${esc(team.name)}</div>
       <div class="card-record">
-        <span class="record-badge record-wins">${team.wins}W</span>
-        <span class="record-badge record-losses">${l}L</span>
-        <span class="ballot-count">${team.ballots} blt</span>
-        ${hasScenario ? `<span class="scenario-projected-record">→ ${projW}-${projL} (${projBlt} blt)</span>` : ''}
+        <span class="ballot-count">${team.ballots} ballots</span>
+        ${hasScenario ? `<span class="scenario-projected-record">→ ${projBlt} ballots</span>` : ''}
       </div>
     </div>
     <div class="card-rounds">
@@ -1061,12 +1060,12 @@ function renderRoundSection(team, rd, past) {
     const rc = rdResult.result === 'W' ? 'win' : 'loss';
     if (actualOpp) h += `<span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span>`;
     h += `<span class="round-result ${rc}">${rdResult.result}</span>`;
-    h += `<span class="round-blt-label">${rdResult.ballots}blt</span>`;
+    h += `<span class="round-blt-label">${rdResult.ballots}</span>`;
     if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)}</span>`;
   } else if (scenarioResult) {
     const rc = scenarioResult.result === 'W' ? 'win' : 'loss';
     h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult.result}</span>`;
-    h += `<span class="round-blt-label">${scenarioResult.ballots}blt</span>`;
+    h += `<span class="round-blt-label">${scenarioResult.ballots}</span>`;
   } else if (isNext) {
     h += `<span class="round-result pending-label">NEXT</span>`;
   } else {
@@ -1244,13 +1243,13 @@ function rdDots(team, past) {
       d += `<div class="round-dot-group">
         ${pr ? `<span class="round-side ${pr.side}">${pr.side}</span>` : ''}
         <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">${rd.result}</div>
-        <span class="round-blt">${rd.ballots}blt</span>
+        <span class="round-blt">${rd.ballots}</span>
       </div>`;
     } else if (sr) {
       const c = sr.result === 'W' ? 'win' : 'loss';
       d += `<div class="round-dot-group">
         <div class="round-dot scenario ${c}" title="R${r}: Projected ${sr.result} ${sr.ballots}blt">${sr.result}</div>
-        <span class="round-blt">${sr.ballots}blt</span>
+        <span class="round-blt">${sr.ballots}</span>
       </div>`;
     } else {
       d += `<div class="round-dot-group"><div class="round-dot pending">R${r}</div></div>`;
