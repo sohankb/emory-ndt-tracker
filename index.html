@@ -118,6 +118,43 @@ h1 span{color:var(--text-dim);font-size:22px;display:block;margin-top:4px}
 .debug-panel{margin-top:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--text-muted);max-height:200px;overflow-y:auto;display:none}
 .debug-panel.show{display:block}
 .debug-toggle{font-size:9px;color:var(--text-muted);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
+.conflict-banner{background:rgba(255,180,50,0.08);border:1px solid rgba(255,180,50,0.3);border-radius:6px;padding:10px 14px;margin-top:12px;font-size:11px;color:#e0a030;line-height:1.6}
+.conflict-banner strong{color:#f0b840}
+.conflict-item{margin:4px 0;padding:2px 0;border-bottom:1px solid rgba(255,180,50,0.1)}
+.source-tag{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:600;letter-spacing:.5px;background:rgba(197,165,81,0.1);color:var(--emory-gold);margin-right:4px}
+.team-tabs{display:flex;gap:4px;margin-bottom:16px}
+.team-tab{padding:8px 18px;font-family:'Instrument Serif',serif;font-size:18px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;transition:all .2s}
+.team-tab:hover{border-color:var(--border-accent);color:var(--text-dim)}
+.team-tab.active{background:var(--emory-gold-dim);border-color:var(--emory-gold);color:var(--emory-gold)}
+.team-tab .tab-record{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;margin-left:6px;letter-spacing:.5px}
+.round-section{border-top:1px solid var(--border)}
+.round-section.next-round{background:var(--emory-gold-dim)}
+.round-section.future-round{opacity:.4}
+.round-section.collapsed .round-section-body{display:none}
+.round-section-header{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;cursor:pointer;user-select:none;gap:8px}
+.round-section-header:hover{background:var(--surface-hover)}
+.round-section-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.round-num{font-family:'Instrument Serif',serif;font-size:16px;color:var(--text);min-width:36px}
+.round-entering{font-size:10px;color:var(--text-muted)}
+.round-result{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px}
+.round-result.win{background:var(--win-bg);color:var(--win)}
+.round-result.loss{background:var(--loss-bg);color:var(--loss)}
+.round-result.pending-label{color:var(--text-muted);font-weight:600;background:none}
+.next-round .round-result.pending-label{color:var(--emory-gold);font-weight:700}
+.round-actual-opp{font-size:10px;color:var(--text-dim)}
+.round-pool-count{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.round-section-body{padding:0 18px 12px}
+.pool-table{width:100%;border-collapse:collapse;font-size:11px}
+.pool-table th{text-align:left;padding:4px 8px;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);font-weight:600}
+.pool-table td{padding:4px 8px;border-bottom:1px solid var(--border);color:var(--text-dim)}
+.pool-table tr:hover td{background:var(--surface-hover)}
+.pool-table tr.actual-opp td{background:var(--emory-gold-dim);color:var(--emory-gold);font-weight:600}
+.pool-table .tn{color:var(--text);font-weight:500}
+.side-either{font-size:9px;color:var(--text-muted);font-style:italic}
+.pull-label{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.pull-label.pull-up{color:#7cb3ff;background:rgba(124,179,255,0.1)}
+.pull-label.pull-down{color:#e0a0ff;background:rgba(224,160,255,0.1)}
+.pull-divider td{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:600}
 @media(max-width:600px){h1{font-size:28px}h1 span{font-size:16px}.emory-grid{grid-template-columns:1fr}.container{padding:14px}}
 </style>
 </head>
@@ -138,13 +175,8 @@ h1 span{color:var(--text-dim);font-size:22px;display:block;margin-top:4px}
       </div>
     </div>
     <div class="config-section">
-      <div class="config-row">
-        <label>URL:</label>
-        <input type="text" id="sheetUrl" placeholder="Paste the full pubhtml URL" />
-        <button class="btn" onclick="saveAndFetch()">Load</button>
-      </div>
       <div class="help-text">
-        Paste the published Google Sheet URL. The tracker will parse the HTML tables directly — no CSV publish needed.
+        Pulling from multiple sources and merging data. Conflicts between sources are flagged.
       </div>
       <div class="sheet-status" id="sheetStatus"></div>
       <span class="debug-toggle" onclick="document.getElementById('debugPanel').classList.toggle('show')">toggle debug log</span>
@@ -158,11 +190,18 @@ h1 span{color:var(--text-dim);font-size:22px;display:block;margin-top:4px}
 </div>
 
 <script>
-const DEFAULT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vReteke16t1NfVoIEsel7Ph6M8TdhGc-qxqJnxODvh9Jo4cWvobGvztgB3L9W4xrFCDaY5TEs25oulK/pubhtml';
 const EMORY = 'Emory';
 
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+let activeTab = null; // currently selected Emory team name, null = first
+let standingsOpen = false; // persists across re-renders
+
 let S = {
-  url: DEFAULT_URL,
   teams: [],
   pairings: {},   // roundNum -> [{aff, neg}]
   pastOpps: {},    // teamName -> [{opp, round, side}]
@@ -171,7 +210,7 @@ let S = {
   lastUp: null,
   err: null,
   sheetsLoaded: [],
-  tabInfo: [],     // [{name, gid}]
+  conflicts: {},
 };
 
 let nextFetch;
@@ -185,9 +224,6 @@ function dbg(msg) {
 }
 
 function init() {
-  const saved = localStorage.getItem('ndt_url');
-  S.url = saved || DEFAULT_URL;
-  document.getElementById('sheetUrl').value = S.url;
   fetchAll();
   setInterval(fetchAll, 60000);
   setInterval(() => {
@@ -197,21 +233,72 @@ function init() {
   }, 1000);
 }
 
-function saveAndFetch() {
-  let v = document.getElementById('sheetUrl').value.trim();
-  // Clean up URL — strip fbclid and other params, keep base pubhtml
-  try {
-    const u = new URL(v);
-    // Keep only the pathname for pubhtml
-    v = u.origin + u.pathname;
-    if (!v.endsWith('/pubhtml')) {
-      // Try to extract the /d/e/XXXX/ pattern
-      const m = v.match(/(\/spreadsheets\/d\/e\/[^/]+)/);
-      if (m) v = 'https://docs.google.com' + m[1] + '/pubhtml';
+// Extract spreadsheet ID or published key from URL
+// Returns { id, published } — published uses /d/e/ format with different CSV endpoint
+function getSheetInfo(url) {
+  const pubMatch = url.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9_-]+)/);
+  if (pubMatch) return { id: pubMatch[1], published: true };
+  const editMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (editMatch) return { id: editMatch[1], published: false };
+  return null;
+}
+
+// Build CSV export URL — different endpoint for published vs edit sheets
+function csvUrl(info, opts) {
+  if (info.published) {
+    // Published sheets use /pub?output=csv (only supports gid, not sheet name)
+    let u = `https://docs.google.com/spreadsheets/d/e/${info.id}/pub?output=csv`;
+    if (opts && opts.gid !== undefined) u += `&gid=${opts.gid}`;
+    return u;
+  }
+  let u = `https://docs.google.com/spreadsheets/d/${info.id}/gviz/tq?tqx=out:csv`;
+  if (opts && opts.gid !== undefined) u += `&gid=${opts.gid}`;
+  if (opts && opts.sheet) u += `&sheet=${encodeURIComponent(opts.sheet)}`;
+  return u;
+}
+
+const ROUND_SHEETS = ['Round 1','Round 2','Round 3','Round 4','Round 5','Round 6','Round 7','Round 8'];
+
+// Multiple data sources — fetched in parallel, merged with conflict detection
+const SOURCES = [
+  { name: 'Primary', url: 'https://docs.google.com/spreadsheets/d/1rT_Il4z8oUjvS62UpyckU0eGJw4_oDn5nWo85lFscWs/edit' },
+  { name: 'Published', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vReteke16t1NfVoIEsel7Ph6M8TdhGc-qxqJnxODvh9Jo4cWvobGvztgB3L9W4xrFCDaY5TEs25oulK/pubhtml' },
+];
+
+// Parse CSV text into 2D array
+function parseCSV(text) {
+  const rows = [];
+  let i = 0;
+  while (i < text.length) {
+    const row = [];
+    while (i < text.length) {
+      if (text[i] === '"') {
+        i++; // skip opening quote
+        let val = '';
+        while (i < text.length) {
+          if (text[i] === '"' && text[i+1] === '"') { val += '"'; i += 2; }
+          else if (text[i] === '"') { i++; break; }
+          else { val += text[i]; i++; }
+        }
+        row.push(val);
+        if (text[i] === ',') i++;
+      } else {
+        let val = '';
+        while (i < text.length && text[i] !== ',' && text[i] !== '\n' && text[i] !== '\r') {
+          val += text[i]; i++;
+        }
+        row.push(val);
+        if (text[i] === ',') i++;
+      }
+      if (i >= text.length || text[i] === '\n' || text[i] === '\r') {
+        if (text[i] === '\r') i++;
+        if (text[i] === '\n') i++;
+        break;
+      }
     }
-  } catch(e) {}
-  if (v) { S.url = v; localStorage.setItem('ndt_url', v); document.getElementById('sheetUrl').value = v; }
-  fetchAll();
+    if (row.length > 0 && row.some(c => c.trim())) rows.push(row);
+  }
+  return rows;
 }
 
 function setStatus(t, msg) {
@@ -221,7 +308,161 @@ function setStatus(t, msg) {
 
 function fmt(d) { return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 
-// ── Fetch & parse pubhtml ──
+// ── Fetch a single source's standings + round pairings ──
+async function fetchSource(src) {
+  const info = getSheetInfo(src.url);
+  if (!info) return { standings: null, pairings: {} };
+
+  const result = { standings: null, pairings: {} };
+  const ts = Date.now();
+
+  // Fetch standings
+  try {
+    let url;
+    if (info.published) {
+      url = csvUrl(info, { gid: 0 });
+    } else {
+      url = csvUrl(info, { sheet: 'Prelim Results' });
+    }
+    dbg(`[${src.name}] Fetching standings: ${url}`);
+    let resp = await fetch(url + (url.includes('?') ? '&' : '?') + '_t=' + ts);
+    // Fallback to gid=0 if sheet name fails
+    if (!resp.ok && !info.published) {
+      url = csvUrl(info, { gid: 0 });
+      resp = await fetch(url + '&_t=' + ts);
+    }
+    if (resp.ok) {
+      const text = await resp.text();
+      const rows = parseCSV(text);
+      // Score = how many teams have non-zero wins (more = more up-to-date)
+      let dataScore = 0;
+      for (let i = 1; i < rows.length; i++) {
+        const wins = parseInt(rows[i][2]) || 0;
+        if (wins > 0) dataScore += wins;
+      }
+      result.standings = { rows, dataScore, source: src.name };
+      dbg(`[${src.name}] Standings: ${rows.length} rows, score=${dataScore}`);
+    }
+  } catch(e) {
+    dbg(`[${src.name}] Standings error: ${e.message}`);
+  }
+
+  // Fetch round pairings (only for non-published sheets that support sheet= param)
+  if (!info.published) {
+    const roundFetches = ROUND_SHEETS.map(async (name, idx) => {
+      const roundNum = idx + 1;
+      try {
+        const url = csvUrl(info, { sheet: name });
+        const r = await fetch(url + '&_t=' + ts);
+        if (!r.ok) return;
+        const csv = await r.text();
+        const rRows = parseCSV(csv);
+        if (rRows.length < 2) return;
+        const hdr = rRows[0].join(' ').toUpperCase();
+        if (!hdr.includes('AFF') || !hdr.includes('NEG')) return;
+        // Parse pairings into [{aff, neg}]
+        const pairings = extractPairingsFromRows(rRows);
+        if (pairings.length > 0) {
+          result.pairings[roundNum] = pairings;
+          dbg(`[${src.name}] ${name}: ${pairings.length} pairings`);
+        }
+      } catch(e) {
+        dbg(`[${src.name}] ${name} error: ${e.message}`);
+      }
+    });
+    await Promise.all(roundFetches);
+  }
+
+  return result;
+}
+
+// Extract pairings from 2D array without storing in S.pairings (for merging)
+function extractPairingsFromRows(rows) {
+  let hIdx = -1;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const joined = rows[i].join(' ').toUpperCase();
+    if (joined.includes('AFF') && joined.includes('NEG')) { hIdx = i; break; }
+  }
+  if (hIdx === -1) return [];
+
+  const hdr = rows[hIdx].map(h => h.trim().toUpperCase());
+  const pairs = [];
+  for (let c = 0; c < hdr.length; c++) {
+    if (hdr[c] === 'AFF') {
+      let negCol = -1;
+      for (let nc = c + 1; nc < hdr.length; nc++) {
+        if (hdr[nc] === 'NEG') { negCol = nc; break; }
+      }
+      if (negCol !== -1) pairs.push({ affCol: c, negCol });
+    }
+  }
+
+  const pairings = [];
+  for (let i = hIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    for (const { affCol, negCol } of pairs) {
+      const aff = (row[affCol] || '').trim();
+      const neg = (row[negCol] || '').trim();
+      if (aff && neg && aff.length > 2 && neg.length > 2) {
+        pairings.push({ aff, neg });
+      }
+    }
+  }
+  return pairings;
+}
+
+// Fetch all sources in parallel and collect results
+async function fetchAllSources() {
+  const allResults = await Promise.all(SOURCES.map(src => fetchSource(src)));
+
+  const merged = { standings: [], pairings: {} };
+  for (const r of allResults) {
+    if (r.standings) merged.standings.push(r.standings);
+    for (const [rd, pairs] of Object.entries(r.pairings)) {
+      if (!merged.pairings[rd]) merged.pairings[rd] = {};
+      const srcName = r.standings ? r.standings.source : 'unknown';
+      merged.pairings[rd][srcName] = pairs;
+    }
+  }
+  return merged;
+}
+
+// Merge pairings from multiple sources, detecting conflicts
+function mergePairings(roundNum, sourceMap) {
+  const sources = Object.entries(sourceMap);
+  const conflicts = [];
+
+  // Use the source with the most pairings as the base
+  sources.sort((a,b) => b[1].length - a[1].length);
+  const [baseName, basePairs] = sources[0];
+
+  // Build a lookup of base pairings by team
+  const baseByTeam = {};
+  for (const p of basePairs) {
+    baseByTeam[p.aff] = p;
+    baseByTeam[p.neg] = p;
+  }
+
+  // Check other sources for disagreements
+  for (let s = 1; s < sources.length; s++) {
+    const [srcName, srcPairs] = sources[s];
+    for (const p of srcPairs) {
+      const baseMatch = baseByTeam[p.aff] || baseByTeam[p.neg];
+      if (baseMatch) {
+        // Same teams but sides swapped?
+        if (baseMatch.aff === p.neg && baseMatch.neg === p.aff) {
+          conflicts.push({ round: roundNum, team: p.aff, issue: `Side swap: ${baseName} has ${p.aff} on AFF, ${srcName} has them on NEG` });
+        } else if (baseMatch.aff !== p.aff || baseMatch.neg !== p.neg) {
+          conflicts.push({ round: roundNum, team: p.aff, issue: `${baseName}: ${baseMatch.aff} vs ${baseMatch.neg}, ${srcName}: ${p.aff} vs ${p.neg}` });
+        }
+      }
+    }
+  }
+
+  return { pairings: basePairs, conflicts };
+}
+
+// ── Fetch & parse ──
 async function fetchAll() {
   setStatus('loading', 'Fetching…');
   nextFetch = Date.now() + 60000;
@@ -229,54 +470,43 @@ async function fetchAll() {
   S.pairings = {};
 
   try {
-    // Fetch the main pubhtml page (contains all sheets as separate tables)
-    dbg('Fetching: ' + S.url);
-    const resp = await fetch(S.url + '?_t=' + Date.now());
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const html = await resp.text();
-    dbg(`Got ${html.length} chars`);
+    // Fetch from all configured sources in parallel
+    const results = await fetchAllSources();
 
-    // Parse the HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+    // Merge standings: prefer the source with more data (more non-zero wins)
+    if (!results.standings.length) throw new Error('No standings data from any source');
+    const bestStandings = results.standings.sort((a,b) => b.dataScore - a.dataScore)[0];
+    dbg(`Using standings from "${bestStandings.source}" (score: ${bestStandings.dataScore})`);
+    S.sheetsLoaded.push({ name: `Standings: ${bestStandings.source}`, ok: true });
+    parseStandingsFromRows(bestStandings.rows);
 
-    // Find all sheet tabs
-    const tabLinks = doc.querySelectorAll('#sheet-menu li');
-    const tabs = [];
-    tabLinks.forEach(li => {
-      const id = li.id; // "sheet-button-XXXXX"
-      const a = li.querySelector('a');
-      const name = a ? a.textContent.trim() : '';
-      const gid = id ? id.replace('sheet-button-', '') : '';
-      tabs.push({ name, gid });
-    });
-    dbg(`Found ${tabs.length} tabs: ${tabs.map(t => t.name).join(', ')}`);
-    S.tabInfo = tabs;
-
-    // Find all tables in the document
-    const tables = doc.querySelectorAll('table');
-    dbg(`Found ${tables.length} tables`);
-
-    if (tables.length === 0) throw new Error('No tables found in the published sheet');
-
-    // First table = standings
-    parseStandingsFromTable(tables[0]);
-    S.sheetsLoaded.push({ name: tabs[0]?.name || 'Standings', ok: true });
-
-    // Remaining tables = round pairings
-    for (let i = 1; i < tables.length; i++) {
-      const tabName = tabs[i]?.name || `Sheet ${i}`;
-      try {
-        const roundNum = extractRoundNum(tabName, i);
-        parsePairingsFromTable(tables[i], roundNum);
-        S.sheetsLoaded.push({ name: tabName, ok: true });
-        dbg(`Parsed round ${roundNum} from "${tabName}": ${(S.pairings[roundNum]||[]).length} pairings`);
-      } catch(e) {
-        S.sheetsLoaded.push({ name: tabName, ok: false });
-        dbg(`Failed to parse "${tabName}": ${e.message}`);
-      }
+    // Show if other sources had different data
+    for (const st of results.standings) {
+      if (st === bestStandings) continue;
+      S.sheetsLoaded.push({ name: `Standings: ${st.source} (alt)`, ok: true });
     }
 
+    // Merge pairings: union across all sources, flag disagreements
+    S.conflicts = {};
+    for (const [roundNum, sourceMap] of Object.entries(results.pairings)) {
+      const sources = Object.entries(sourceMap);
+      if (sources.length === 1) {
+        // Only one source has this round
+        S.pairings[roundNum] = sources[0][1];
+        S.sheetsLoaded.push({ name: `Rd ${roundNum}: ${sources[0][0]}`, ok: true });
+      } else {
+        // Multiple sources — compare and merge
+        const merged = mergePairings(parseInt(roundNum), sourceMap);
+        S.pairings[roundNum] = merged.pairings;
+        if (merged.conflicts.length) {
+          S.conflicts[roundNum] = merged.conflicts;
+          S.sheetsLoaded.push({ name: `Rd ${roundNum}: merged (${merged.conflicts.length} conflicts)`, ok: true });
+          dbg(`Round ${roundNum}: ${merged.conflicts.length} conflicts between sources`);
+        } else {
+          S.sheetsLoaded.push({ name: `Rd ${roundNum}: ${sources.length} sources agree`, ok: true });
+        }
+      }
+    }
     buildHistory();
     S.lastUp = new Date();
     S.err = null;
@@ -292,9 +522,8 @@ async function fetchAll() {
       document.getElementById('content').innerHTML = `
         <div class="error-banner">
           <strong>Could not fetch or parse data.</strong><br><br>
-          Make sure the URL points to a published Google Sheet (pubhtml).<br>
-          The URL should look like: <code>https://docs.google.com/spreadsheets/d/e/XXXXX/pubhtml</code><br><br>
-          Error: ${e.message}<br><br>
+          Paste a Google Sheets URL (the sheet must be shared as "anyone with the link").<br><br>
+          Error: ${esc(e.message)}<br><br>
           Check the debug log below for details.
         </div>`;
       document.getElementById('debugPanel').classList.add('show');
@@ -303,21 +532,14 @@ async function fetchAll() {
   }
 }
 
-function extractRoundNum(name, idx) {
-  if (!name) return idx;
-  const m = name.match(/(\d+)/);
-  return m ? parseInt(m[1]) : idx;
-}
-
 function renderSheetStatus() {
   document.getElementById('sheetStatus').innerHTML = S.sheetsLoaded.map(s =>
-    `<span class="sheet-chip ${s.ok?'ok':'fail'}">${s.name}</span>`
+    `<span class="sheet-chip ${s.ok?'ok':'fail'}">${esc(s.name)}</span>`
   ).join('');
 }
 
-// ── Parse standings table ──
-function parseStandingsFromTable(table) {
-  const rows = tableToArray(table);
+// ── Parse standings from 2D array ──
+function parseStandingsFromRows(rows) {
   if (rows.length < 2) throw new Error('Standings table too small');
 
   dbg(`Standings: ${rows.length} rows, first row: ${rows[0].slice(0,6).join(' | ')}`);
@@ -359,7 +581,7 @@ function parseStandingsFromTable(table) {
   for (let i = hIdx + 1; i < rows.length; i++) {
     const row = rows[i];
     const name = (row[colMap.team] || '').trim();
-    if (!name || name === '1Checker') continue;
+    if (!name || name === '1Checker' || /- ?WL\d/i.test(name)) continue;
 
     const t = {
       name,
@@ -370,7 +592,7 @@ function parseStandingsFromTable(table) {
     };
 
     const m = name.match(/^(.+?)\s+([A-Z]{2,3})$/);
-    t.school = m ? m[1] : name;
+    t.school = m ? m[1].replace(/,/g, '') : name.replace(/,/g, '');
     t.code = m ? m[2] : '';
 
     // Parse round-by-round W/L and ballot data
@@ -394,68 +616,72 @@ function parseStandingsFromTable(table) {
   dbg(`Parsed ${teams.length} teams, current round: ${S.curRound}`);
 }
 
-// ── Parse pairings table ──
-function parsePairingsFromTable(table, roundNum) {
-  const rows = tableToArray(table);
-  if (rows.length < 2) return;
+// ── Name normalization (pairings use abbreviations, standings use full names) ──
+const ABBREVS = {
+  'NU': 'Northwestern', 'GMU': 'George Mason', 'USC': 'Southern California',
+  'Cal': 'UC Berkeley', 'UGA': 'Georgia', 'MSU': 'Michigan State',
+  'WKU': 'Western Kentucky', 'JMU': 'James Madison', 'KSU': 'Kansas State',
+  'KState': 'Kansas State', 'UTD': 'UTD', 'UCO': 'Central Oklahoma',
+  'CSULB': 'CSU Long Beach', 'UMass': 'Massachusetts Amherst',
+  'UMich': 'Michigan', 'Mich': 'Michigan',
+  'Dart': 'Dartmouth', 'OU': 'Oklahoma', 'UNI': 'Northern Iowa',
+  'GTown': 'Georgetown', 'MoState': 'MoState', 'Bing': 'Binghamton',
+  'Wyo': 'Wyoming', 'Wake': 'Wake Forest', 'UTSA': 'UT San Antonio',
+  'IU': 'Indiana',
+};
 
-  // Find header row with AFF/NEG
-  let hIdx = -1;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
-    const joined = rows[i].join(' ').toUpperCase();
-    if (joined.includes('AFF') && joined.includes('NEG')) { hIdx = i; break; }
-  }
-  if (hIdx === -1) return;
-
-  const hdr = rows[hIdx].map(h => h.trim().toUpperCase());
-
-  // Find all AFF/NEG column pairs (there can be two side-by-side tables)
-  const pairs = [];
-  for (let c = 0; c < hdr.length; c++) {
-    if (hdr[c] === 'AFF') {
-      // Find corresponding NEG column
-      let negCol = -1;
-      for (let nc = c + 1; nc < hdr.length; nc++) {
-        if (hdr[nc] === 'NEG') { negCol = nc; break; }
-      }
-      if (negCol !== -1) pairs.push({ affCol: c, negCol });
-    }
-  }
-
-  const pairings = [];
-  for (let i = hIdx + 1; i < rows.length; i++) {
-    const row = rows[i];
-    for (const { affCol, negCol } of pairs) {
-      const aff = (row[affCol] || '').trim();
-      const neg = (row[negCol] || '').trim();
-      if (aff && neg && aff.length > 2 && neg.length > 2) {
-        pairings.push({ aff, neg });
+function buildNameMap() {
+  // Map abbreviated pairing names -> full standings names
+  S.nameMap = {};
+  for (const t of S.teams) {
+    // Direct match
+    S.nameMap[t.name] = t.name;
+    // Also map by code suffix: e.g. "WW" -> if school matches abbreviation
+    const code = t.code;
+    if (!code) continue;
+    for (const [abbr, full] of Object.entries(ABBREVS)) {
+      if (t.school === full) {
+        S.nameMap[`${abbr} ${code}`] = t.name;
       }
     }
   }
-
-  if (pairings.length > 0) S.pairings[roundNum] = pairings;
+  dbg(`Name map: ${Object.keys(S.nameMap).length} entries`);
 }
 
-// ── Convert HTML table to 2D array ──
-function tableToArray(table) {
-  const rows = [];
-  const trs = table.querySelectorAll('tr');
-  trs.forEach(tr => {
-    const cells = [];
-    const tds = tr.querySelectorAll('th, td');
-    tds.forEach(td => {
-      cells.push(td.textContent.trim());
-    });
-    if (cells.length > 0) rows.push(cells);
-  });
-  return rows;
+function resolveName(n) {
+  n = n.trim().replace(/[?]+$/, '').trim();
+  if (S.nameMap[n]) return S.nameMap[n];
+  // Try splitting into school abbreviation + code and matching via ABBREVS
+  const m = n.match(/^(.+?)\s+([A-Z]{2,3})\s*$/);
+  if (m) {
+    const [, school, code] = m;
+    const fullSchool = ABBREVS[school];
+    if (fullSchool) {
+      // Exact school + code match
+      const match = S.teams.find(t => t.school === fullSchool && t.code === code);
+      if (match) { S.nameMap[n] = match.name; return match.name; }
+      // Fuzzy: same school, closest code (handles typos like "DV" for "DE")
+      const sameSchool = S.teams.filter(t => t.school === fullSchool);
+      if (sameSchool.length === 1) {
+        // Only one team from this school — must be them
+        dbg(`Fuzzy match: "${n}" → "${sameSchool[0].name}" (only team from ${fullSchool})`);
+        S.nameMap[n] = sameSchool[0].name;
+        return sameSchool[0].name;
+      }
+    }
+  }
+  dbg(`Could not resolve name: "${n}"`);
+  S.unresolved = S.unresolved || [];
+  if (!S.unresolved.includes(n)) S.unresolved.push(n);
+  return n;
 }
 
 // ── Build opponent & side history ──
 function buildHistory() {
+  buildNameMap();
   S.pastOpps = {};
   S.sides = {};
+  S.unresolved = [];
   for (const t of S.teams) {
     S.pastOpps[t.name] = [];
     S.sides[t.name] = { aff: 0, neg: 0 };
@@ -463,62 +689,161 @@ function buildHistory() {
   for (const [rdStr, pairs] of Object.entries(S.pairings)) {
     const rd = parseInt(rdStr);
     for (const p of pairs) {
-      if (S.pastOpps[p.aff]) S.pastOpps[p.aff].push({ opp: p.neg, round: rd, side: 'aff' });
-      if (S.sides[p.aff]) S.sides[p.aff].aff++;
-      if (S.pastOpps[p.neg]) S.pastOpps[p.neg].push({ opp: p.aff, round: rd, side: 'neg' });
-      if (S.sides[p.neg]) S.sides[p.neg].neg++;
+      const aff = resolveName(p.aff);
+      const neg = resolveName(p.neg);
+      if (S.pastOpps[aff]) S.pastOpps[aff].push({ opp: neg, round: rd, side: 'aff' });
+      if (S.sides[aff]) S.sides[aff].aff++;
+      if (S.pastOpps[neg]) S.pastOpps[neg].push({ opp: aff, round: rd, side: 'neg' });
+      if (S.sides[neg]) S.sides[neg].neg++;
     }
   }
 }
 
 // ── Matchup logic ──
+// NDT power-matching rules (after round 2):
+//   (1) same win-loss record
+//   (2) ranked by ballots within bracket
+//   (3) adjusted speaker points (not available in sheet data)
+//   (4) teams from the same school shall not meet
+//   Teams shall only meet once during prelim rounds
+
+// Get matchups using current (latest) state
 function getMatchups(team) {
-  const past = new Set((S.pastOpps[team.name]||[]).map(o => o.opp));
-  return S.teams.filter(t => {
-    if (t.name === team.name) return false;
-    if (t.school === EMORY) return false;
-    if (t.wins !== team.wins) return false;
-    if (past.has(t.name)) return false;
-    return true;
-  }).sort((a,b) => b.ballots !== a.ballots ? b.ballots - a.ballots : a.name.localeCompare(b.name));
+  return getMatchupsAsOf(team, S.curRound + 1).pool;
 }
 
-function likelySide(eTeam) {
-  const e = S.sides[eTeam.name] || { aff:0, neg:0 };
-  if (e.aff < e.neg) return 'AFF';
-  if (e.neg < e.aff) return 'NEG';
+// Precompute all teams' records entering a given round (avoids redundant per-team filtering)
+function teamRecordsAsOf(rd) {
+  return S.teams.map(t => {
+    const rds = t.rounds.filter(r => r.round < rd);
+    return {
+      ...t,
+      winsAsOf: rds.filter(r => r.result === 'W').length,
+      ballotsAsOf: rds.reduce((s, r) => s + r.ballots, 0),
+    };
+  });
+}
+
+// Get matchups as they would have been computed before round `rd`
+// Returns { pool, pullUp, pullDown } — pool is same bracket, pullUp/pullDown are adjacent
+function getMatchupsAsOf(team, rd) {
+  const allTeams = teamRecordsAsOf(rd);
+  const me = allTeams.find(t => t.name === team.name);
+  if (!me) return { pool: [], pullUp: [], pullDown: [] };
+  const teamWins = me.winsAsOf;
+
+  // Past opponents before this round
+  const pastSet = new Set((S.pastOpps[team.name] || []).filter(p => p.round < rd).map(o => o.opp));
+
+  // Filter eligible teams for a given win bracket
+  function eligible(wins) {
+    return allTeams.filter(t => {
+      if (t.name === team.name) return false;
+      if (t.school === team.school) return false;
+      if (t.winsAsOf !== wins) return false;
+      if (pastSet.has(t.name)) return false;
+      return true;
+    }).sort((a, b) => b.ballotsAsOf !== a.ballotsAsOf ? b.ballotsAsOf - a.ballotsAsOf : a.name.localeCompare(b.name));
+  }
+
+  const pool = eligible(teamWins);
+  const maxWins = rd - 1; // max possible wins entering round rd
+  const pullDown = teamWins < maxWins ? eligible(teamWins + 1) : [];
+  const pullUp = teamWins > 0 ? eligible(teamWins - 1) : [];
+
+  // Full bracket count (all teams at this W-L, before filtering for this specific team)
+  const fullBracketSize = allTeams.filter(t => t.winsAsOf === teamWins).length;
+
+  return { pool, pullUp, pullDown, fullBracketSize };
+}
+
+// Compute the likely side for a team entering round `rd`
+function likelySideAsOf(teamName, rd) {
+  const pastOpps = (S.pastOpps[teamName] || []).filter(p => p.round < rd);
+  let aff = 0, neg = 0;
+  for (const p of pastOpps) {
+    if (p.side === 'aff') aff++;
+    else neg++;
+  }
+  if (aff < neg) return 'AFF';
+  if (neg < aff) return 'NEG';
   return null;
 }
 
+function likelySide(eTeam) {
+  return likelySideAsOf(eTeam.name, S.curRound + 1);
+}
+
 // ── Render ──
+function switchTab(name) {
+  activeTab = name;
+  render();
+}
+
 function render() {
   renderRoundNav();
   const ems = S.teams.filter(t => t.school === EMORY);
   if (!ems.length && S.teams.length) {
-    document.getElementById('content').innerHTML = `<div class="error-banner">No Emory teams found among ${S.teams.length} teams. Sample: ${S.teams.slice(0,5).map(t=>t.name).join(', ')}</div>`;
+    document.getElementById('content').innerHTML = `<div class="error-banner">No Emory teams found among ${S.teams.length} teams. Sample: ${S.teams.slice(0,5).map(t=>esc(t.name)).join(', ')}</div>`;
     return;
   }
   if (!S.teams.length) {
     document.getElementById('content').innerHTML = `<div class="loading-state">No team data loaded yet.</div>`;
     return;
   }
-  let h = '<div class="emory-grid">';
-  for (const t of ems) h += renderCard(t);
-  h += '</div>' + renderStandings();
+
+  // Default to first Emory team if no tab selected
+  if (!activeTab || !ems.find(t => t.name === activeTab)) activeTab = ems[0].name;
+  const selected = ems.find(t => t.name === activeTab);
+
+  let h = '';
+  h += renderConflicts();
+
+  // Team tabs
+  h += '<div class="team-tabs">';
+  for (const t of ems) {
+    const l = S.curRound - t.wins;
+    const isActive = t.name === activeTab;
+    h += `<button class="team-tab${isActive?' active':''}" onclick="switchTab(this.dataset.team)" data-team="${esc(t.name)}">${esc(t.code || t.name)}<span class="tab-record">${t.wins}-${l}</span></button>`;
+  }
+  h += '</div>';
+
+  h += renderCard(selected);
+  h += renderStandings();
   document.getElementById('content').innerHTML = h;
 }
 
+function renderConflicts() {
+  let h = '';
+  if (S.conflicts && Object.keys(S.conflicts).length) {
+    h += '<div class="conflict-banner"><strong>Source Conflicts Detected</strong>';
+    for (const [rd, items] of Object.entries(S.conflicts)) {
+      for (const c of items) {
+        h += `<div class="conflict-item">Rd ${esc(String(rd))}: ${esc(c.issue)}</div>`;
+      }
+    }
+    h += '</div>';
+  }
+  if (S.unresolved && S.unresolved.length) {
+    h += '<div class="conflict-banner"><strong>Unresolved Team Names</strong> (pairing names that couldn\'t be matched to standings)';
+    for (const n of S.unresolved) {
+      h += `<div class="conflict-item">${esc(n)}</div>`;
+    }
+    h += '</div>';
+  }
+  return h;
+}
+
 function renderCard(team) {
-  const mx = getMatchups(team);
   const l = S.curRound - team.wins;
   const sd = S.sides[team.name] || { aff:0, neg:0 };
   const past = S.pastOpps[team.name] || [];
   const nextSide = likelySide(team);
 
-  return `
+  let h = `
   <div class="emory-card">
     <div class="card-header">
-      <div class="card-team-name">${team.name}</div>
+      <div class="card-team-name">${esc(team.name)}</div>
       <div class="card-record">
         <span class="record-badge record-wins">${team.wins}W</span>
         <span class="record-badge record-losses">${l}L</span>
@@ -532,29 +857,133 @@ function renderCard(team) {
         <span class="side-tag neg">NEG ${sd.neg}</span>
         ${nextSide ? `<span style="font-size:9px;color:var(--text-muted)">→ likely ${nextSide}</span>` : ''}
       </div>
-    </div>
-    ${past.length ? `
-    <div class="card-past">
-      <div class="section-label">Past opponents</div>
-      <div class="past-chips">${past.map(p => `<span class="past-chip">${p.opp}<span class="rd"> R${p.round} ${p.side.toUpperCase()}</span></span>`).join('')}</div>
-    </div>` : ''}
-    <div class="card-matchups">
-      <div class="matchup-count">Potential Rd ${S.curRound+1} opponents · <strong>${mx.length}</strong> teams at ${team.wins}-${l}</div>
-      <div class="matchup-list">
-        ${mx.length === 0 ? '<div class="no-matchups">No eligible opponents at this record</div>' :
-          mx.map(m => {
-            const ml = S.curRound - m.wins;
-            return `<div class="matchup-row">
-              <span class="matchup-team">${m.name}</span>
-              <div class="matchup-meta">
-                <span class="matchup-record">${m.wins}-${ml}</span>
-                <span class="matchup-ballots">${m.ballots}blt</span>
-              </div>
-            </div>`;
-          }).join('')}
-      </div>
-    </div>
-  </div>`;
+    </div>`;
+
+  // Round-by-round sections
+  for (let r = 1; r <= 8; r++) {
+    h += renderRoundSection(team, r, past);
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function renderRoundSection(team, rd, past) {
+  const rdResult = team.rounds.find(x => x.round === rd);
+  const actualOpp = past.find(p => p.round === rd);
+  const isFuture = !rdResult;
+  const isNext = rd === S.curRound + 1;
+
+  // Record entering this round
+  const winsEntering = team.rounds.filter(r => r.round < rd && r.result === 'W').length;
+  const lossesEntering = team.rounds.filter(r => r.round < rd && r.result === 'L').length;
+  const teamSide = likelySideAsOf(team.name, rd);
+
+  // Matchup pool before this round (power matching only after round 2)
+  // Only compute for completed rounds and the next round — future rounds beyond next have unknown records
+  const isPowerMatched = rd > 2;
+  const canCompute = isPowerMatched && (rd <= S.curRound + 1);
+  const matchups = canCompute ? getMatchupsAsOf(team, rd) : { pool: [], pullUp: [], pullDown: [] };
+  const { pool, pullUp, pullDown } = matchups;
+  const totalEligible = pool.length + pullUp.length + pullDown.length;
+
+  const startCollapsed = !isNext;
+  let h = `<div class="round-section${isNext ? ' next-round' : ''}${isFuture && !isNext ? ' future-round' : ''}${startCollapsed ? ' collapsed' : ''}">`;
+  h += `<div class="round-section-header" onclick="this.parentElement.classList.toggle('collapsed')">`;
+  h += `<div class="round-section-title">`;
+  h += `<span class="round-num">Rd ${rd}</span>`;
+  h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering</span>`;
+  if (teamSide) h += `<span class="side-tag ${teamSide.toLowerCase()}">likely ${teamSide}</span>`;
+
+  if (rdResult) {
+    const rc = rdResult.result === 'W' ? 'win' : 'loss';
+    h += `<span class="round-result ${rc}">${rdResult.result} ${rdResult.ballots}blt</span>`;
+    if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)} <span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span></span>`;
+  } else if (isNext) {
+    h += `<span class="round-result pending-label">NEXT</span>`;
+  } else {
+    h += `<span class="round-result pending-label">—</span>`;
+  }
+  h += `</div>`;
+  h += `<span class="round-pool-count">${canCompute ? `${pool.length} in bracket` + (pullUp.length || pullDown.length ? ` + ${pullUp.length + pullDown.length} adj` : '') : (rd <= 2 ? 'pre-set' : '')}</span>`;
+  h += `</div>`;
+
+  // Matchup table
+  if (canCompute && totalEligible > 0) {
+    h += `<div class="round-section-body">`;
+    h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups.fullBracketSize);
+    h += `</div>`;
+  } else if (!isPowerMatched && !isFuture) {
+    h += `<div class="round-section-body"><div class="no-matchups">Pre-set pairing (power matching begins after Rd 2)</div></div>`;
+  } else if (canCompute) {
+    h += `<div class="round-section-body"><div class="no-matchups">No eligible opponents at ${winsEntering}-${lossesEntering} or adjacent brackets</div></div>`;
+  }
+
+  h += `</div>`;
+  return h;
+}
+
+function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, fullBracketSize) {
+  let h = '<table class="pool-table"><thead><tr>';
+  h += '<th>Team</th><th>Record</th><th>Blt</th><th>Their Side</th><th>Prob</th><th></th>';
+  h += '</tr></thead><tbody>';
+
+  // Probability model:
+  // Use the FULL bracket size (not filtered pool) to determine if a pull is needed.
+  // If full bracket is odd, there's a 1/fullBracketSize chance our team is the odd one out.
+  // Scenario A (prob = (fullBracketSize-1)/fullBracketSize): we stay in bracket → 1/pool.length each
+  // Scenario B (prob = 1/fullBracketSize): we're pulled → 1/adjTotal each
+  // If pool is empty (all bracket opponents are same-school or already faced), we must be pulled.
+  const bracketOdd = fullBracketSize % 2 === 1;
+  const adjTotal = pullUp.length + pullDown.length;
+  let poolProb, adjProb;
+  if (pool.length === 0) {
+    // Must be pulled to adjacent bracket
+    poolProb = 0;
+    adjProb = adjTotal > 0 ? 100 / adjTotal : 0;
+  } else if (bracketOdd && adjTotal > 0) {
+    // Odd bracket: chance of being the odd one out
+    const pStay = (fullBracketSize - 1) / fullBracketSize;
+    const pPull = 1 / fullBracketSize;
+    poolProb = pStay * (100 / pool.length);
+    adjProb = pPull * (adjTotal > 0 ? 100 / adjTotal : 0);
+  } else {
+    // Even bracket or no adjacent teams: simple uniform within bracket
+    poolProb = pool.length > 0 ? 100 / pool.length : 0;
+    adjProb = 0;
+  }
+
+  function renderRows(teams, prob, label) {
+    for (const m of teams) {
+      const mLosses = (rd - 1) - m.winsAsOf;
+      const oppSide = likelySideAsOf(m.name, rd);
+      const isActual = actualOpp && actualOpp.opp === m.name;
+      h += `<tr class="${isActual ? 'actual-opp' : ''}">`;
+      h += `<td class="tn">${esc(m.name)}</td>`;
+      h += `<td>${m.winsAsOf}-${mLosses}</td>`;
+      h += `<td>${m.ballotsAsOf}</td>`;
+      h += `<td>${oppSide ? `<span class="side-tag ${oppSide.toLowerCase()}">${oppSide}</span>` : '<span class="side-either">EITHER</span>'}</td>`;
+      h += `<td>${prob.toFixed(1)}%</td>`;
+      h += `<td>${label ? `<span class="pull-label ${label}">${label}</span>` : ''}</td>`;
+      h += `</tr>`;
+    }
+  }
+
+  renderRows(pool, poolProb, '');
+
+  if (pullDown.length > 0) {
+    const pdWins = teamWins + 1;
+    h += `<tr class="pull-divider"><td colspan="6">Pull-down from ${pdWins}-${(rd - 1) - pdWins}</td></tr>`;
+    renderRows(pullDown, adjProb, 'pull-down');
+  }
+  if (pullUp.length > 0) {
+    const puWins = teamWins - 1;
+    h += `<tr class="pull-divider"><td colspan="6">Pull-up from ${puWins}-${(rd - 1) - puWins}</td></tr>`;
+    renderRows(pullUp, adjProb, 'pull-up');
+  }
+
+  h += '</tbody></table>';
+  return h;
 }
 
 function rdDots(team, past) {
@@ -565,7 +994,7 @@ function rdDots(team, past) {
     if (rd) {
       const c = rd.result === 'W' ? 'win' : 'loss';
       d += `<div class="round-dot-group">
-        <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+pr.opp:''}">${rd.result}${rd.ballots}</div>
+        <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">${rd.result}${rd.ballots}</div>
         ${pr ? `<span class="round-side ${pr.side}">${pr.side}</span>` : ''}
       </div>`;
     } else {
@@ -594,15 +1023,15 @@ function renderStandings() {
   <div class="standings-section">
     <div class="standings-header" onclick="toggleSt()">
       <h2>Full Standings · ${S.teams.length} teams</h2>
-      <span class="standings-toggle" id="stT">Show ▼</span>
+      <span class="standings-toggle" id="stT">${standingsOpen?'Hide ▲':'Show ▼'}</span>
     </div>
-    <div id="stB" style="display:none"><div class="st-wrap">
+    <div id="stB" style="display:${standingsOpen?'block':'none'}"><div class="st-wrap">
       <table class="standings-table">
         <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>Blt</th><th>A</th><th>N</th>${[1,2,3,4,5,6,7,8].map(r=>`<th>R${r}</th>`).join('')}</tr></thead>
         <tbody>${sorted.map((t,i) => {
           const em = t.school === EMORY;
           const sd = S.sides[t.name]||{aff:0,neg:0};
-          return `<tr class="${em?'emory-row':''}"><td>${i+1}</td><td class="tn">${t.name}</td><td>${t.wins}</td><td>${S.curRound-t.wins}</td><td>${t.ballots}</td><td>${sd.aff}</td><td>${sd.neg}</td>${[1,2,3,4,5,6,7,8].map(r=>{const rd=t.rounds.find(x=>x.round===r);return rd?`<td style="color:${rd.result==='W'?'var(--win)':'var(--loss)'}">${rd.result}${rd.ballots}</td>`:'<td>—</td>';}).join('')}</tr>`;
+          return `<tr class="${em?'emory-row':''}"><td>${i+1}</td><td class="tn">${esc(t.name)}</td><td>${t.wins}</td><td>${S.curRound-t.wins}</td><td>${t.ballots}</td><td>${sd.aff}</td><td>${sd.neg}</td>${[1,2,3,4,5,6,7,8].map(r=>{const rd=t.rounds.find(x=>x.round===r);return rd?`<td style="color:${rd.result==='W'?'var(--win)':'var(--loss)'}">${rd.result}${rd.ballots}</td>`:'<td>—</td>';}).join('')}</tr>`;
         }).join('')}</tbody>
       </table>
     </div></div>
@@ -610,10 +1039,11 @@ function renderStandings() {
 }
 
 function toggleSt() {
+  standingsOpen = !standingsOpen;
   const b = document.getElementById('stB');
   const t = document.getElementById('stT');
-  if (b.style.display === 'none') { b.style.display = 'block'; t.textContent = 'Hide ▲'; }
-  else { b.style.display = 'none'; t.textContent = 'Show ▼'; }
+  b.style.display = standingsOpen ? 'block' : 'none';
+  t.textContent = standingsOpen ? 'Hide ▲' : 'Show ▼';
 }
 
 init();
