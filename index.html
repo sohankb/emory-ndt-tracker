@@ -26,8 +26,8 @@
   --loss: #D14124;
   --loss-bg: rgba(209,65,36,0.08);
   --aff-color: #007DBA;
-  --neg-color: #5B6770;
-  --wisteria: #89509E;
+  --neg-color: #89509E;
+  --marble: #998B7D;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:'Open Sans',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
@@ -68,7 +68,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .record-badge{padding:2px 8px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.5px}
 .record-wins{background:var(--win-bg);color:var(--win)}
 .record-losses{background:var(--loss-bg);color:var(--loss)}
-.ballot-count{font-size:10px;color:var(--text-muted);margin-left:2px}
+.ballot-count{font-size:10px;color:var(--marble);font-weight:700;margin-left:2px}
 .card-rounds{padding:10px 18px;display:flex;gap:3px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .round-dot-group{display:flex;flex-direction:column;align-items:center;gap:1px}
 .round-dot{width:26px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
@@ -77,11 +77,11 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .round-dot.pending{border-style:dashed;font-size:8px}
 .round-side{font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .round-side.aff{color:var(--aff-color)}.round-side.neg{color:var(--neg-color)}
-.round-blt{font-size:7px;font-weight:700;color:var(--wisteria);letter-spacing:.3px}
+.round-blt{font-size:7px;font-weight:700;color:var(--marble);letter-spacing:.3px}
 .side-summary{font-size:10px;color:var(--text-muted);margin-left:8px;display:flex;gap:6px;align-items:center}
 .side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:600}
 .side-tag.aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.side-tag.neg{color:var(--neg-color);background:rgba(91,103,112,0.08)}
+.side-tag.neg{color:var(--neg-color);background:rgba(137,80,158,0.08)}
 .card-past{padding:10px 18px;border-bottom:1px solid var(--border)}
 .section-label{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px}
 .past-chips{display:flex;gap:4px;flex-wrap:wrap}
@@ -102,7 +102,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .matchup-ballots{color:var(--text-muted);font-size:9px}
 .matchup-side-hint{font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;letter-spacing:.5px}
 .matchup-side-hint.likely-aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.matchup-side-hint.likely-neg{color:var(--neg-color);background:rgba(91,103,112,0.08)}
+.matchup-side-hint.likely-neg{color:var(--neg-color);background:rgba(137,80,158,0.08)}
 .no-matchups{color:var(--text-muted);font-size:11px;font-style:italic;padding:6px 0}
 .standings-section{margin-top:36px;border-top:1px solid var(--border);padding-top:20px}
 .standings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer;user-select:none}
@@ -144,7 +144,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .round-result{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px}
 .round-result.win{background:var(--win-bg);color:var(--win)}
 .round-result.loss{background:var(--loss-bg);color:var(--loss)}
-.round-blt-label{font-size:10px;font-weight:700;color:var(--wisteria)}
+.round-blt-label{font-size:10px;font-weight:600;color:var(--marble)}
 .round-result.pending-label{color:var(--text-muted);font-weight:600;background:none}
 .next-round .round-result.pending-label{color:var(--emory-blue);font-weight:700}
 .round-actual-opp{font-size:10px;color:var(--text-dim)}
@@ -160,7 +160,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .side-either{font-size:9px;color:var(--text-muted);font-style:italic}
 .pull-label{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .pull-label.pull-up{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.pull-label.pull-down{color:var(--neg-color);background:rgba(91,103,112,0.08)}
+.pull-label.pull-down{color:var(--neg-color);background:rgba(137,80,158,0.08)}
 .pull-divider td{font-size:9px;font-family:'Open Sans',sans-serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:700}
 .emory-card{box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .scenario-toggles{display:inline-flex;gap:2px;margin-left:8px}
