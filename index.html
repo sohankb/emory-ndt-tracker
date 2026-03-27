@@ -72,15 +72,17 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .record-losses{background:var(--loss-bg);color:var(--loss)}
 .ballot-count{font-size:11px;color:var(--text-dim);background:var(--marble);padding:2px 8px;border-radius:3px;font-weight:700}
 .card-rounds{padding:10px 18px;display:flex;gap:3px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.round-dot-group{display:flex;align-items:center;gap:2px}
-.round-dot{height:20px;padding:0 5px;display:flex;align-items:center;justify-content:center;border-radius:3px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
-.round-dot.win{background:var(--win-bg);color:var(--win);border-color:rgba(0,72,43,0.2)}
-.round-dot.loss{background:var(--loss-bg);color:var(--loss);border-color:rgba(209,65,36,0.2)}
-.round-dot.pending{border-style:dashed;font-size:8px}
-.round-side{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:1px 4px;border-radius:2px}
-.round-side.aff{color:var(--text-dim);background:rgba(0,125,186,0.12)}
-.round-side.neg{color:var(--text-dim);background:var(--neg-color)}
-.round-blt{font-size:8px;font-weight:600;color:var(--text-dim);background:var(--marble);padding:1px 4px;border-radius:2px}
+.round-dot-group{display:inline-flex;align-items:center;gap:2px;margin-right:4px}
+.rd-badge{height:22px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700}
+.rd-badge.side-aff{color:var(--text-dim);background:rgba(0,125,186,0.15)}
+.rd-badge.side-neg{color:var(--text-dim);background:var(--neg-color)}
+.rd-badge.result-w{background:var(--win-bg);color:var(--win)}
+.rd-badge.result-l{background:var(--loss-bg);color:var(--loss)}
+.rd-badge.blt{color:var(--text-dim);background:var(--marble)}
+.rd-badge.pending{border:1px dashed var(--border);color:var(--text-muted);font-size:9px}
+.rd-badge.scenario{border:2px dashed}
+.rd-badge.scenario.result-w{border-color:var(--win)}
+.rd-badge.scenario.result-l{border-color:var(--loss)}
 .side-summary{font-size:10px;color:var(--text-muted);margin-left:8px;display:flex;gap:6px;align-items:center}
 .side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:700}
 .side-tag.aff{color:var(--text-dim);background:rgba(0,125,186,0.12)}
@@ -999,12 +1001,7 @@ function renderCard(team) {
     </div>
     <div class="card-rounds">
       ${rdDots(team, past)}
-      <div class="side-summary">
-        <span class="side-tag aff">AFF ${sd.aff}</span>
-        <span class="side-tag neg">NEG ${sd.neg}</span>
-        ${nextSide.locked ? `<span style="font-size:9px;color:var(--text-muted)">→ Locked ${nextSide.side}</span>` : `<span style="font-size:9px;color:var(--text-muted)">→ Either Side</span>`}
-        ${hasScenario ? `<button class="scenario-clear" onclick="clearScenarios('${esc(team.name).replace(/'/g, "\\'")}')">Clear Scenarios</button>` : ''}
-      </div>
+      ${hasScenario ? `<button class="scenario-clear" onclick="clearScenarios('${esc(team.name).replace(/'/g, "\\'")}')">Clear Scenarios</button>` : ''}
     </div>`;
 
   // Round-by-round sections
@@ -1053,25 +1050,25 @@ function renderRoundSection(team, rd, past) {
   h += `<div class="round-section-title">`;
   h += `<span class="round-num">Rd ${rd}</span>`;
   h += `<span class="round-entering">${winsEntering}-${lossesEntering} entering${Object.keys(sc).length ? ` · ${ballotsEntering} blt` : ''}</span>`;
-  if (isFuture) {
-    if (teamSide.locked) h += `<span class="side-tag ${teamSide.side.toLowerCase()}">Locked ${teamSide.side}</span>`;
-    else h += `<span class="side-either">Either Side</span>`;
-  }
-
   if (rdResult) {
-    const rc = rdResult.result === 'W' ? 'win' : 'loss';
-    if (actualOpp) h += `<span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span>`;
-    h += `<span class="round-result ${rc}">${rdResult.result}</span>`;
-    h += `<span class="round-blt-label">${rdResult.ballots}</span>`;
+    const rc = rdResult.result === 'W' ? 'result-w' : 'result-l';
+    if (actualOpp) h += `<span class="rd-badge side-${actualOpp.side}">${actualOpp.side.toUpperCase()}</span>`;
+    h += `<span class="rd-badge ${rc}">${rdResult.result}</span>`;
+    h += `<span class="rd-badge blt">${rdResult.ballots}</span>`;
     if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)}</span>`;
   } else if (scenarioResult) {
-    const rc = scenarioResult.result === 'W' ? 'win' : 'loss';
-    h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult.result}</span>`;
-    h += `<span class="round-blt-label">${scenarioResult.ballots}</span>`;
-  } else if (isNext) {
-    h += `<span class="round-result pending-label">NEXT</span>`;
+    const rc = scenarioResult.result === 'W' ? 'result-w' : 'result-l';
+    h += `<span class="rd-badge scenario ${rc}">IF ${scenarioResult.result}</span>`;
+    h += `<span class="rd-badge blt">${scenarioResult.ballots}</span>`;
   } else {
-    h += `<span class="round-result pending-label">—</span>`;
+    if (isFuture) {
+      if (teamSide.locked) h += `<span class="rd-badge side-${teamSide.side.toLowerCase()}">Locked ${teamSide.side}</span>`;
+    }
+    if (isNext) {
+      h += `<span class="round-result pending-label">NEXT</span>`;
+    } else {
+      h += `<span class="round-result pending-label">—</span>`;
+    }
   }
 
   // W/L scenario toggle buttons with ballot counts for future rounds
@@ -1209,7 +1206,7 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
       h += `<td class="tn">${esc(m.name)}</td>`;
       h += `<td>${m.winsAsOf}-${mLosses}</td>`;
       h += `<td>${m.ballotsAsOf}</td>`;
-      h += `<td>${oppSide.locked ? `<span class="side-tag ${oppSide.side.toLowerCase()}">Locked ${oppSide.side}</span>` : '<span class="side-either">Either Side</span>'}</td>`;
+      h += `<td>${oppSide.locked ? `<span class="rd-badge side-${oppSide.side.toLowerCase()}">Locked ${oppSide.side}</span>` : '<span class="side-either">Either Side</span>'}</td>`;
       h += `<td>${prob.toFixed(1)}%</td>`;
       h += `<td>${label ? `<span class="pull-label ${label}">${label}</span>` : ''}</td>`;
       h += `</tr>`;
@@ -1241,20 +1238,20 @@ function rdDots(team, past) {
     const pr = past.find(p => p.round === r);
     const sr = sc[r];
     if (rd) {
-      const c = rd.result === 'W' ? 'win' : 'loss';
-      d += `<div class="round-dot-group">
-        ${pr ? `<span class="round-side ${pr.side}">${pr.side}</span>` : ''}
-        <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">${rd.result}</div>
-        <span class="round-blt">${rd.ballots}</span>
+      const rc = rd.result === 'W' ? 'result-w' : 'result-l';
+      d += `<div class="round-dot-group" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">
+        ${pr ? `<span class="rd-badge side-${pr.side}">${pr.side}</span>` : ''}
+        <span class="rd-badge ${rc}">${rd.result}</span>
+        <span class="rd-badge blt">${rd.ballots}</span>
       </div>`;
     } else if (sr) {
-      const c = sr.result === 'W' ? 'win' : 'loss';
-      d += `<div class="round-dot-group">
-        <div class="round-dot scenario ${c}" title="R${r}: Projected ${sr.result} ${sr.ballots}blt">${sr.result}</div>
-        <span class="round-blt">${sr.ballots}</span>
+      const rc = sr.result === 'W' ? 'result-w' : 'result-l';
+      d += `<div class="round-dot-group" title="R${r}: Projected ${sr.result} ${sr.ballots}blt">
+        <span class="rd-badge scenario ${rc}">${sr.result}</span>
+        <span class="rd-badge blt">${sr.ballots}</span>
       </div>`;
     } else {
-      d += `<div class="round-dot-group"><div class="round-dot pending">R${r}</div></div>`;
+      d += `<div class="round-dot-group"><span class="rd-badge pending">R${r}</span></div>`;
     }
   }
   return d;
