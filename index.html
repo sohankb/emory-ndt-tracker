@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NDT 2026 — Emory Matchup Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c10;
+  --surface: #12151c;
+  --surface-hover: #1a1e28;
+  --border: #1e2330;
+  --border-accent: #2a3040;
+  --text: #e2e4e9;
+  --text-dim: #8890a0;
+  --text-muted: #555d70;
+  --emory-gold: #c5a551;
+  --emory-gold-dim: rgba(197,165,81,0.12);
+  --emory-gold-glow: rgba(197,165,81,0.25);
+  --win: #2dd4a0;
+  --win-bg: rgba(45,212,160,0.08);
+  --loss: #f47067;
+  --loss-bg: rgba(244,112,103,0.08);
+  --aff-color: #7cb3ff;
+  --neg-color: #e0a0ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh}
+.grain{position:fixed;top:0;left:0;right:0;bottom:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:28px 24px}
+header{margin-bottom:32px;border-bottom:1px solid var(--border);padding-bottom:20px}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+h1{font-family:'Instrument Serif',serif;font-size:40px;font-weight:400;letter-spacing:-0.5px;color:var(--emory-gold);line-height:1.1}
+h1 span{color:var(--text-dim);font-size:22px;display:block;margin-top:4px}
+.status-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--win);animation:pulse 2s ease-in-out infinite}
+.status-dot.error{background:var(--loss)}.status-dot.loading{background:var(--emory-gold)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.countdown{font-size:10px;color:var(--text-muted);font-variant-numeric:tabular-nums;margin-top:4px;text-align:right}
+.config-section{margin-top:16px}
+.config-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.config-row label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;min-width:60px}
+.config-row input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;border-radius:4px;flex:1;min-width:200px;max-width:700px}
+.config-row input:focus{outline:none;border-color:var(--emory-gold)}
+.btn{padding:5px 14px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:1px;text-transform:uppercase;border:1px solid var(--emory-gold);border-radius:4px;background:var(--emory-gold-dim);color:var(--emory-gold);cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn:hover{background:var(--emory-gold-glow)}
+.help-text{font-size:10px;color:var(--text-muted);margin-top:4px;line-height:1.6}
+.sheet-status{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.sheet-chip{font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid var(--border)}
+.sheet-chip.ok{color:var(--win);border-color:rgba(45,212,160,0.3)}
+.sheet-chip.fail{color:var(--text-muted);border-color:var(--border);opacity:.5}
+.round-nav{display:flex;gap:4px;margin-top:16px;flex-wrap:wrap}
+.round-pill{padding:5px 12px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:1px;text-transform:uppercase;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-muted);cursor:default;transition:all .2s}
+.round-pill.completed{color:var(--text-dim);border-color:var(--border-accent)}
+.round-pill.active{background:var(--emory-gold-dim);border-color:var(--emory-gold);color:var(--emory-gold)}
+.round-pill.future{opacity:.3}
+.emory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:18px;margin-top:20px}
+.emory-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s}
+.emory-card:hover{border-color:var(--border-accent)}
+.card-header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(0,40,120,0.12),transparent)}
+.card-team-name{font-family:'Instrument Serif',serif;font-size:22px}
+.card-record{display:flex;gap:5px;align-items:center}
+.record-badge{padding:2px 8px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.5px}
+.record-wins{background:var(--win-bg);color:var(--win)}
+.record-losses{background:var(--loss-bg);color:var(--loss)}
+.ballot-count{font-size:10px;color:var(--text-muted);margin-left:2px}
+.card-rounds{padding:10px 18px;display:flex;gap:3px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.round-dot-group{display:flex;flex-direction:column;align-items:center;gap:2px}
+.round-dot{width:30px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:9px;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
+.round-dot.win{background:var(--win-bg);color:var(--win);border-color:rgba(45,212,160,0.2)}
+.round-dot.loss{background:var(--loss-bg);color:var(--loss);border-color:rgba(244,112,103,0.2)}
+.round-dot.pending{border-style:dashed}
+.round-side{font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.round-side.aff{color:var(--aff-color)}.round-side.neg{color:var(--neg-color)}
+.side-summary{font-size:10px;color:var(--text-muted);margin-left:8px;display:flex;gap:6px;align-items:center}
+.side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:600}
+.side-tag.aff{color:var(--aff-color);background:rgba(124,179,255,0.1)}
+.side-tag.neg{color:var(--neg-color);background:rgba(224,160,255,0.1)}
+.card-past{padding:10px 18px;border-bottom:1px solid var(--border)}
+.section-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+.past-chips{display:flex;gap:4px;flex-wrap:wrap}
+.past-chip{font-size:10px;padding:2px 7px;border-radius:3px;background:var(--surface-hover);color:var(--text-muted);border:1px solid var(--border)}
+.past-chip .rd{color:var(--text-muted);font-size:8px;margin-left:3px}
+.card-matchups{padding:14px 18px}
+.matchup-count{font-size:10px;color:var(--text-muted);margin-bottom:8px}
+.matchup-count strong{color:var(--text-dim)}
+.matchup-list{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow-y:auto}
+.matchup-list::-webkit-scrollbar{width:4px}
+.matchup-list::-webkit-scrollbar-track{background:transparent}
+.matchup-list::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:2px}
+.matchup-row{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:4px;font-size:11px;transition:background .15s}
+.matchup-row:hover{background:var(--surface-hover)}
+.matchup-team{color:var(--text);font-weight:500}
+.matchup-meta{display:flex;align-items:center;gap:6px}
+.matchup-record{color:var(--text-dim);font-size:11px;font-weight:600}
+.matchup-ballots{color:var(--text-muted);font-size:9px}
+.matchup-side-hint{font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;letter-spacing:.5px}
+.matchup-side-hint.likely-aff{color:var(--aff-color);background:rgba(124,179,255,0.1)}
+.matchup-side-hint.likely-neg{color:var(--neg-color);background:rgba(224,160,255,0.1)}
+.no-matchups{color:var(--text-muted);font-size:11px;font-style:italic;padding:6px 0}
+.standings-section{margin-top:36px;border-top:1px solid var(--border);padding-top:20px}
+.standings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer;user-select:none}
+.standings-header h2{font-family:'Instrument Serif',serif;font-size:22px;font-weight:400;color:var(--text-dim)}
+.standings-toggle{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
+.st-wrap{overflow-x:auto}
+.standings-table{width:100%;border-collapse:collapse;font-size:11px;min-width:800px}
+.standings-table th{text-align:left;padding:6px 10px;font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap}
+.standings-table td{padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text-dim);white-space:nowrap}
+.standings-table tr:hover td{background:var(--surface-hover)}
+.standings-table .tn{color:var(--text);font-weight:500}
+.standings-table .emory-row td{background:var(--emory-gold-dim)}
+.standings-table .emory-row .tn{color:var(--emory-gold);font-weight:700}
+.error-banner{background:var(--loss-bg);border:1px solid rgba(244,112,103,0.3);border-radius:6px;padding:14px 18px;margin-top:16px;color:var(--loss);font-size:12px;line-height:1.6}
+.loading-state{text-align:center;padding:60px 20px;color:var(--text-muted);font-size:12px}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--emory-gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.debug-panel{margin-top:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--text-muted);max-height:200px;overflow-y:auto;display:none}
+.debug-panel.show{display:block}
+.debug-toggle{font-size:9px;color:var(--text-muted);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
+@media(max-width:600px){h1{font-size:28px}h1 span{font-size:16px}.emory-grid{grid-template-columns:1fr}.container{padding:14px}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="container">
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>NDT 2026<span>Emory Matchup Tracker</span></h1>
+      </div>
+      <div style="text-align:right">
+        <div class="status-bar">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Initializing…</span>
+        </div>
+        <div class="countdown" id="countdown"></div>
+      </div>
+    </div>
+    <div class="config-section">
+      <div class="config-row">
+        <label>URL:</label>
+        <input type="text" id="sheetUrl" placeholder="Paste the full pubhtml URL" />
+        <button class="btn" onclick="saveAndFetch()">Load</button>
+      </div>
+      <div class="help-text">
+        Paste the published Google Sheet URL. The tracker will parse the HTML tables directly — no CSV publish needed.
+      </div>
+      <div class="sheet-status" id="sheetStatus"></div>
+      <span class="debug-toggle" onclick="document.getElementById('debugPanel').classList.toggle('show')">toggle debug log</span>
+      <div class="debug-panel" id="debugPanel"></div>
+    </div>
+    <div class="round-nav" id="roundNav"></div>
+  </header>
+  <div id="content">
+    <div class="loading-state"><div class="spinner"></div>Loading…</div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vReteke16t1NfVoIEsel7Ph6M8TdhGc-qxqJnxODvh9Jo4cWvobGvztgB3L9W4xrFCDaY5TEs25oulK/pubhtml';
+const EMORY = 'Emory';
+
+let S = {
+  url: DEFAULT_URL,
+  teams: [],
+  pairings: {},   // roundNum -> [{aff, neg}]
+  pastOpps: {},    // teamName -> [{opp, round, side}]
+  sides: {},       // teamName -> {aff, neg}
+  curRound: 0,
+  lastUp: null,
+  err: null,
+  sheetsLoaded: [],
+  tabInfo: [],     // [{name, gid}]
+};
+
+let nextFetch;
+const log = [];
+
+function dbg(msg) {
+  log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
+  if (log.length > 100) log.shift();
+  const el = document.getElementById('debugPanel');
+  if (el) el.textContent = log.join('\n');
+}
+
+function init() {
+  const saved = localStorage.getItem('ndt_url');
+  S.url = saved || DEFAULT_URL;
+  document.getElementById('sheetUrl').value = S.url;
+  fetchAll();
+  setInterval(fetchAll, 60000);
+  setInterval(() => {
+    if (!nextFetch) return;
+    const r = Math.max(0, Math.ceil((nextFetch - Date.now()) / 1000));
+    document.getElementById('countdown').textContent = `Next refresh in ${r}s`;
+  }, 1000);
+}
+
+function saveAndFetch() {
+  let v = document.getElementById('sheetUrl').value.trim();
+  // Clean up URL — strip fbclid and other params, keep base pubhtml
+  try {
+    const u = new URL(v);
+    // Keep only the pathname for pubhtml
+    v = u.origin + u.pathname;
+    if (!v.endsWith('/pubhtml')) {
+      // Try to extract the /d/e/XXXX/ pattern
+      const m = v.match(/(\/spreadsheets\/d\/e\/[^/]+)/);
+      if (m) v = 'https://docs.google.com' + m[1] + '/pubhtml';
+    }
+  } catch(e) {}
+  if (v) { S.url = v; localStorage.setItem('ndt_url', v); document.getElementById('sheetUrl').value = v; }
+  fetchAll();
+}
+
+function setStatus(t, msg) {
+  document.getElementById('statusDot').className = 'status-dot' + (t==='error'?' error':t==='loading'?' loading':'');
+  document.getElementById('statusText').textContent = msg;
+}
+
+function fmt(d) { return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+
+// ── Fetch & parse pubhtml ──
+async function fetchAll() {
+  setStatus('loading', 'Fetching…');
+  nextFetch = Date.now() + 60000;
+  S.sheetsLoaded = [];
+  S.pairings = {};
+
+  try {
+    // Fetch the main pubhtml page (contains all sheets as separate tables)
+    dbg('Fetching: ' + S.url);
+    const resp = await fetch(S.url + '?_t=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const html = await resp.text();
+    dbg(`Got ${html.length} chars`);
+
+    // Parse the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Find all sheet tabs
+    const tabLinks = doc.querySelectorAll('#sheet-menu li');
+    const tabs = [];
+    tabLinks.forEach(li => {
+      const id = li.id; // "sheet-button-XXXXX"
+      const a = li.querySelector('a');
+      const name = a ? a.textContent.trim() : '';
+      const gid = id ? id.replace('sheet-button-', '') : '';
+      tabs.push({ name, gid });
+    });
+    dbg(`Found ${tabs.length} tabs: ${tabs.map(t => t.name).join(', ')}`);
+    S.tabInfo = tabs;
+
+    // Find all tables in the document
+    const tables = doc.querySelectorAll('table');
+    dbg(`Found ${tables.length} tables`);
+
+    if (tables.length === 0) throw new Error('No tables found in the published sheet');
+
+    // First table = standings
+    parseStandingsFromTable(tables[0]);
+    S.sheetsLoaded.push({ name: tabs[0]?.name || 'Standings', ok: true });
+
+    // Remaining tables = round pairings
+    for (let i = 1; i < tables.length; i++) {
+      const tabName = tabs[i]?.name || `Sheet ${i}`;
+      try {
+        const roundNum = extractRoundNum(tabName, i);
+        parsePairingsFromTable(tables[i], roundNum);
+        S.sheetsLoaded.push({ name: tabName, ok: true });
+        dbg(`Parsed round ${roundNum} from "${tabName}": ${(S.pairings[roundNum]||[]).length} pairings`);
+      } catch(e) {
+        S.sheetsLoaded.push({ name: tabName, ok: false });
+        dbg(`Failed to parse "${tabName}": ${e.message}`);
+      }
+    }
+
+    buildHistory();
+    S.lastUp = new Date();
+    S.err = null;
+    setStatus('live', `Live — ${fmt(S.lastUp)}`);
+    renderSheetStatus();
+    render();
+
+  } catch(e) {
+    S.err = e.message;
+    setStatus('error', e.message);
+    dbg('ERROR: ' + e.message);
+    if (!S.teams.length) {
+      document.getElementById('content').innerHTML = `
+        <div class="error-banner">
+          <strong>Could not fetch or parse data.</strong><br><br>
+          Make sure the URL points to a published Google Sheet (pubhtml).<br>
+          The URL should look like: <code>https://docs.google.com/spreadsheets/d/e/XXXXX/pubhtml</code><br><br>
+          Error: ${e.message}<br><br>
+          Check the debug log below for details.
+        </div>`;
+      document.getElementById('debugPanel').classList.add('show');
+    }
+    renderSheetStatus();
+  }
+}
+
+function extractRoundNum(name, idx) {
+  if (!name) return idx;
+  const m = name.match(/(\d+)/);
+  return m ? parseInt(m[1]) : idx;
+}
+
+function renderSheetStatus() {
+  document.getElementById('sheetStatus').innerHTML = S.sheetsLoaded.map(s =>
+    `<span class="sheet-chip ${s.ok?'ok':'fail'}">${s.name}</span>`
+  ).join('');
+}
+
+// ── Parse standings table ──
+function parseStandingsFromTable(table) {
+  const rows = tableToArray(table);
+  if (rows.length < 2) throw new Error('Standings table too small');
+
+  dbg(`Standings: ${rows.length} rows, first row: ${rows[0].slice(0,6).join(' | ')}`);
+
+  // Find header row (contains "Team" and "Wins")
+  let hIdx = 0;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const joined = rows[i].join(' ').toLowerCase();
+    if (joined.includes('team') && (joined.includes('win') || joined.includes('w/l'))) {
+      hIdx = i; break;
+    }
+  }
+
+  const headers = rows[hIdx].map(h => h.trim());
+  dbg(`Header row ${hIdx}: ${headers.join(' | ')}`);
+
+  // Map columns by header text
+  const colMap = {};
+  headers.forEach((h, i) => {
+    const hu = h.toUpperCase();
+    if (hu === 'TEAM') colMap.team = i;
+    else if (hu === 'SEED') colMap.seed = i;
+    else if (hu === 'WINS') colMap.wins = i;
+    else if (hu === 'BALLOTS') colMap.ballots = i;
+  });
+
+  // Find W/L and BLT columns
+  const wlCols = [];
+  const bltCols = [];
+  headers.forEach((h, i) => {
+    const hu = h.toUpperCase();
+    if (hu.match(/^W\/L\d*$/)) wlCols.push(i);
+    else if (hu.match(/^BLT\d*$/)) bltCols.push(i);
+  });
+
+  dbg(`Columns: team=${colMap.team}, wins=${colMap.wins}, ballots=${colMap.ballots}, wlCols=${wlCols}, bltCols=${bltCols}`);
+
+  const teams = [];
+  for (let i = hIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const name = (row[colMap.team] || '').trim();
+    if (!name || name === '1Checker') continue;
+
+    const t = {
+      name,
+      seed: colMap.seed !== undefined ? (row[colMap.seed]||'').trim() : '',
+      wins: parseInt(row[colMap.wins]) || 0,
+      ballots: parseInt(row[colMap.ballots]) || 0,
+      rounds: []
+    };
+
+    const m = name.match(/^(.+?)\s+([A-Z]{2,3})$/);
+    t.school = m ? m[1] : name;
+    t.code = m ? m[2] : '';
+
+    // Parse round-by-round W/L and ballot data
+    for (let r = 0; r < wlCols.length && r < 8; r++) {
+      const wl = (row[wlCols[r]] || '').trim();
+      const blt = r < bltCols.length ? (row[bltCols[r]] || '').trim() : '0';
+      if (wl !== '' && wl !== '0') {
+        const n = parseFloat(wl);
+        if (!isNaN(n) && n !== 0) {
+          t.rounds.push({ round: r+1, result: n > 0 ? 'W' : 'L', wl: n, ballots: parseInt(blt)||0 });
+        }
+      }
+    }
+    teams.push(t);
+  }
+
+  S.teams = teams;
+  let mx = 0;
+  for (const t of teams) mx = Math.max(mx, t.rounds.length);
+  S.curRound = mx;
+  dbg(`Parsed ${teams.length} teams, current round: ${S.curRound}`);
+}
+
+// ── Parse pairings table ──
+function parsePairingsFromTable(table, roundNum) {
+  const rows = tableToArray(table);
+  if (rows.length < 2) return;
+
+  // Find header row with AFF/NEG
+  let hIdx = -1;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const joined = rows[i].join(' ').toUpperCase();
+    if (joined.includes('AFF') && joined.includes('NEG')) { hIdx = i; break; }
+  }
+  if (hIdx === -1) return;
+
+  const hdr = rows[hIdx].map(h => h.trim().toUpperCase());
+
+  // Find all AFF/NEG column pairs (there can be two side-by-side tables)
+  const pairs = [];
+  for (let c = 0; c < hdr.length; c++) {
+    if (hdr[c] === 'AFF') {
+      // Find corresponding NEG column
+      let negCol = -1;
+      for (let nc = c + 1; nc < hdr.length; nc++) {
+        if (hdr[nc] === 'NEG') { negCol = nc; break; }
+      }
+      if (negCol !== -1) pairs.push({ affCol: c, negCol });
+    }
+  }
+
+  const pairings = [];
+  for (let i = hIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    for (const { affCol, negCol } of pairs) {
+      const aff = (row[affCol] || '').trim();
+      const neg = (row[negCol] || '').trim();
+      if (aff && neg && aff.length > 2 && neg.length > 2) {
+        pairings.push({ aff, neg });
+      }
+    }
+  }
+
+  if (pairings.length > 0) S.pairings[roundNum] = pairings;
+}
+
+// ── Convert HTML table to 2D array ──
+function tableToArray(table) {
+  const rows = [];
+  const trs = table.querySelectorAll('tr');
+  trs.forEach(tr => {
+    const cells = [];
+    const tds = tr.querySelectorAll('th, td');
+    tds.forEach(td => {
+      cells.push(td.textContent.trim());
+    });
+    if (cells.length > 0) rows.push(cells);
+  });
+  return rows;
+}
+
+// ── Build opponent & side history ──
+function buildHistory() {
+  S.pastOpps = {};
+  S.sides = {};
+  for (const t of S.teams) {
+    S.pastOpps[t.name] = [];
+    S.sides[t.name] = { aff: 0, neg: 0 };
+  }
+  for (const [rdStr, pairs] of Object.entries(S.pairings)) {
+    const rd = parseInt(rdStr);
+    for (const p of pairs) {
+      if (S.pastOpps[p.aff]) S.pastOpps[p.aff].push({ opp: p.neg, round: rd, side: 'aff' });
+      if (S.sides[p.aff]) S.sides[p.aff].aff++;
+      if (S.pastOpps[p.neg]) S.pastOpps[p.neg].push({ opp: p.aff, round: rd, side: 'neg' });
+      if (S.sides[p.neg]) S.sides[p.neg].neg++;
+    }
+  }
+}
+
+// ── Matchup logic ──
+function getMatchups(team) {
+  const past = new Set((S.pastOpps[team.name]||[]).map(o => o.opp));
+  return S.teams.filter(t => {
+    if (t.name === team.name) return false;
+    if (t.school === EMORY) return false;
+    if (t.wins !== team.wins) return false;
+    if (past.has(t.name)) return false;
+    return true;
+  }).sort((a,b) => b.ballots !== a.ballots ? b.ballots - a.ballots : a.name.localeCompare(b.name));
+}
+
+function likelySide(eTeam) {
+  const e = S.sides[eTeam.name] || { aff:0, neg:0 };
+  if (e.aff < e.neg) return 'AFF';
+  if (e.neg < e.aff) return 'NEG';
+  return null;
+}
+
+// ── Render ──
+function render() {
+  renderRoundNav();
+  const ems = S.teams.filter(t => t.school === EMORY);
+  if (!ems.length && S.teams.length) {
+    document.getElementById('content').innerHTML = `<div class="error-banner">No Emory teams found among ${S.teams.length} teams. Sample: ${S.teams.slice(0,5).map(t=>t.name).join(', ')}</div>`;
+    return;
+  }
+  if (!S.teams.length) {
+    document.getElementById('content').innerHTML = `<div class="loading-state">No team data loaded yet.</div>`;
+    return;
+  }
+  let h = '<div class="emory-grid">';
+  for (const t of ems) h += renderCard(t);
+  h += '</div>' + renderStandings();
+  document.getElementById('content').innerHTML = h;
+}
+
+function renderCard(team) {
+  const mx = getMatchups(team);
+  const l = S.curRound - team.wins;
+  const sd = S.sides[team.name] || { aff:0, neg:0 };
+  const past = S.pastOpps[team.name] || [];
+  const nextSide = likelySide(team);
+
+  return `
+  <div class="emory-card">
+    <div class="card-header">
+      <div class="card-team-name">${team.name}</div>
+      <div class="card-record">
+        <span class="record-badge record-wins">${team.wins}W</span>
+        <span class="record-badge record-losses">${l}L</span>
+        <span class="ballot-count">${team.ballots} blt</span>
+      </div>
+    </div>
+    <div class="card-rounds">
+      ${rdDots(team, past)}
+      <div class="side-summary">
+        <span class="side-tag aff">AFF ${sd.aff}</span>
+        <span class="side-tag neg">NEG ${sd.neg}</span>
+        ${nextSide ? `<span style="font-size:9px;color:var(--text-muted)">→ likely ${nextSide}</span>` : ''}
+      </div>
+    </div>
+    ${past.length ? `
+    <div class="card-past">
+      <div class="section-label">Past opponents</div>
+      <div class="past-chips">${past.map(p => `<span class="past-chip">${p.opp}<span class="rd"> R${p.round} ${p.side.toUpperCase()}</span></span>`).join('')}</div>
+    </div>` : ''}
+    <div class="card-matchups">
+      <div class="matchup-count">Potential Rd ${S.curRound+1} opponents · <strong>${mx.length}</strong> teams at ${team.wins}-${l}</div>
+      <div class="matchup-list">
+        ${mx.length === 0 ? '<div class="no-matchups">No eligible opponents at this record</div>' :
+          mx.map(m => {
+            const ml = S.curRound - m.wins;
+            return `<div class="matchup-row">
+              <span class="matchup-team">${m.name}</span>
+              <div class="matchup-meta">
+                <span class="matchup-record">${m.wins}-${ml}</span>
+                <span class="matchup-ballots">${m.ballots}blt</span>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function rdDots(team, past) {
+  let d = '';
+  for (let r = 1; r <= 8; r++) {
+    const rd = team.rounds.find(x => x.round === r);
+    const pr = past.find(p => p.round === r);
+    if (rd) {
+      const c = rd.result === 'W' ? 'win' : 'loss';
+      d += `<div class="round-dot-group">
+        <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+pr.opp:''}">${rd.result}${rd.ballots}</div>
+        ${pr ? `<span class="round-side ${pr.side}">${pr.side}</span>` : ''}
+      </div>`;
+    } else {
+      d += `<div class="round-dot-group"><div class="round-dot pending">R${r}</div></div>`;
+    }
+  }
+  return d;
+}
+
+function renderRoundNav() {
+  let h = '';
+  for (let r = 1; r <= 8; r++) {
+    let c = 'round-pill';
+    if (r <= S.curRound) c += ' completed';
+    else if (r === S.curRound + 1) c += ' active';
+    else c += ' future';
+    const has = !!S.pairings[r];
+    h += `<button class="${c}" title="${has ? (S.pairings[r].length + ' pairings') : 'No data'}">${has ? '✓ ' : ''}Rd ${r}</button>`;
+  }
+  document.getElementById('roundNav').innerHTML = h;
+}
+
+function renderStandings() {
+  const sorted = [...S.teams].sort((a,b) => b.wins !== a.wins ? b.wins - a.wins : b.ballots !== a.ballots ? b.ballots - a.ballots : a.name.localeCompare(b.name));
+  return `
+  <div class="standings-section">
+    <div class="standings-header" onclick="toggleSt()">
+      <h2>Full Standings · ${S.teams.length} teams</h2>
+      <span class="standings-toggle" id="stT">Show ▼</span>
+    </div>
+    <div id="stB" style="display:none"><div class="st-wrap">
+      <table class="standings-table">
+        <thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>Blt</th><th>A</th><th>N</th>${[1,2,3,4,5,6,7,8].map(r=>`<th>R${r}</th>`).join('')}</tr></thead>
+        <tbody>${sorted.map((t,i) => {
+          const em = t.school === EMORY;
+          const sd = S.sides[t.name]||{aff:0,neg:0};
+          return `<tr class="${em?'emory-row':''}"><td>${i+1}</td><td class="tn">${t.name}</td><td>${t.wins}</td><td>${S.curRound-t.wins}</td><td>${t.ballots}</td><td>${sd.aff}</td><td>${sd.neg}</td>${[1,2,3,4,5,6,7,8].map(r=>{const rd=t.rounds.find(x=>x.round===r);return rd?`<td style="color:${rd.result==='W'?'var(--win)':'var(--loss)'}">${rd.result}${rd.ballots}</td>`:'<td>—</td>';}).join('')}</tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div></div>
+  </div>`;
+}
+
+function toggleSt() {
+  const b = document.getElementById('stB');
+  const t = document.getElementById('stT');
+  if (b.style.display === 'none') { b.style.display = 'block'; t.textContent = 'Hide ▲'; }
+  else { b.style.display = 'none'; t.textContent = 'Show ▼'; }
+}
+
+init();
+</script>
+</body>
+</html>
