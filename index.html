@@ -709,6 +709,7 @@ function buildHistory() {
     for (const p of pairs) {
       const aff = resolveName(p.aff);
       const neg = resolveName(p.neg);
+      if (!aff || !neg) continue; // skip pairings with unresolvable teams
       if (S.pastOpps[aff]) S.pastOpps[aff].push({ opp: neg, round: rd, side: 'aff' });
       if (S.sides[aff]) S.sides[aff].aff++;
       if (S.pastOpps[neg]) S.pastOpps[neg].push({ opp: aff, round: rd, side: 'neg' });
