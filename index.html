@@ -16,7 +16,7 @@
   --text-dim: #3d4255;
   --text-muted: #6b7280;
   --emory-blue: #0033A0;
-  --emory-blue-dim: rgba(0,51,160,0.08);
+  --emory-blue-dim: #E7E7F5;
   --emory-blue-glow: rgba(0,51,160,0.18);
   --emory-dark: #002F6C;
   --emory-yellow: #F2A900;
@@ -26,7 +26,7 @@
   --loss: #D14124;
   --loss-bg: rgba(209,65,36,0.08);
   --aff-color: #007DBA;
-  --neg-color: #535486;
+  --neg-color: #D14124;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:'Open Sans',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
@@ -61,7 +61,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .emory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:18px;margin-top:20px}
 .emory-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s}
 .emory-card:hover{border-color:var(--border-accent)}
-.card-header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(0,51,160,0.06),transparent)}
+.card-header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#E7E7F5,transparent)}
 .card-team-name{font-family:'Crimson Pro',serif;font-size:24px;font-weight:200;letter-spacing:-0.03em}
 .card-record{display:flex;gap:5px;align-items:center}
 .record-badge{padding:2px 8px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.5px}
@@ -79,7 +79,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .side-summary{font-size:10px;color:var(--text-muted);margin-left:8px;display:flex;gap:6px;align-items:center}
 .side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:600}
 .side-tag.aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.side-tag.neg{color:var(--neg-color);background:rgba(83,84,134,0.08)}
+.side-tag.neg{color:var(--neg-color);background:rgba(209,65,36,0.08)}
 .card-past{padding:10px 18px;border-bottom:1px solid var(--border)}
 .section-label{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px}
 .past-chips{display:flex;gap:4px;flex-wrap:wrap}
@@ -100,7 +100,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .matchup-ballots{color:var(--text-muted);font-size:9px}
 .matchup-side-hint{font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;letter-spacing:.5px}
 .matchup-side-hint.likely-aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.matchup-side-hint.likely-neg{color:var(--neg-color);background:rgba(83,84,134,0.08)}
+.matchup-side-hint.likely-neg{color:var(--neg-color);background:rgba(209,65,36,0.08)}
 .no-matchups{color:var(--text-muted);font-size:11px;font-style:italic;padding:6px 0}
 .standings-section{margin-top:36px;border-top:1px solid var(--border);padding-top:20px}
 .standings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer;user-select:none}
@@ -156,7 +156,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .side-either{font-size:9px;color:var(--text-muted);font-style:italic}
 .pull-label{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .pull-label.pull-up{color:var(--aff-color);background:rgba(0,125,186,0.08)}
-.pull-label.pull-down{color:var(--neg-color);background:rgba(83,84,134,0.08)}
+.pull-label.pull-down{color:var(--neg-color);background:rgba(209,65,36,0.08)}
 .pull-divider td{font-size:9px;font-family:'Open Sans',sans-serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;padding:8px 8px 4px;border-bottom:1px solid var(--border-accent);font-weight:700}
 .emory-card{box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .scenario-toggles{display:inline-flex;gap:2px;margin-left:8px}
@@ -164,7 +164,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .scenario-btn:hover{border-color:var(--border-accent);color:var(--text)}
 .scenario-btn.scenario-w.active{background:var(--win-bg);color:var(--win);border-color:var(--win)}
 .scenario-btn.scenario-l.active{background:var(--loss-bg);color:var(--loss);border-color:var(--loss)}
-.scenario-round{background:rgba(0,51,160,0.04);border-left:3px solid var(--emory-blue)}
+.scenario-round{background:#E7E7F5;border-left:3px solid var(--emory-blue)}
 .scenario-result{font-style:italic;letter-spacing:.5px}
 .scenario-projected-record{font-size:10px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--emory-blue);margin-left:6px;font-style:italic}
 .scenario-clear{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:3px;padding:1px 8px;cursor:pointer;margin-left:8px;text-transform:uppercase;letter-spacing:0.05em}
