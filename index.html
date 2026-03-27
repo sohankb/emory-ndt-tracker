@@ -27,6 +27,7 @@
   --loss-bg: rgba(209,65,36,0.08);
   --aff-color: #007DBA;
   --neg-color: #5B6770;
+  --wisteria: #89509E;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:'Open Sans',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
@@ -69,13 +70,14 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .record-losses{background:var(--loss-bg);color:var(--loss)}
 .ballot-count{font-size:10px;color:var(--text-muted);margin-left:2px}
 .card-rounds{padding:10px 18px;display:flex;gap:3px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.round-dot-group{display:flex;flex-direction:column;align-items:center;gap:2px}
-.round-dot{width:30px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
+.round-dot-group{display:flex;flex-direction:column;align-items:center;gap:1px}
+.round-dot{width:26px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:10px;font-family:'Open Sans',sans-serif;font-weight:700;border:1px solid var(--border);color:var(--text-muted)}
 .round-dot.win{background:var(--win-bg);color:var(--win);border-color:rgba(0,72,43,0.2)}
 .round-dot.loss{background:var(--loss-bg);color:var(--loss);border-color:rgba(209,65,36,0.2)}
-.round-dot.pending{border-style:dashed}
-.round-side{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.round-dot.pending{border-style:dashed;font-size:8px}
+.round-side{font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .round-side.aff{color:var(--aff-color)}.round-side.neg{color:var(--neg-color)}
+.round-blt{font-size:7px;font-weight:700;color:var(--wisteria);letter-spacing:.3px}
 .side-summary{font-size:10px;color:var(--text-muted);margin-left:8px;display:flex;gap:6px;align-items:center}
 .side-tag{padding:1px 5px;border-radius:2px;font-size:9px;font-weight:600}
 .side-tag.aff{color:var(--aff-color);background:rgba(0,125,186,0.08)}
@@ -142,6 +144,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .round-result{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px}
 .round-result.win{background:var(--win-bg);color:var(--win)}
 .round-result.loss{background:var(--loss-bg);color:var(--loss)}
+.round-blt-label{font-size:10px;font-weight:700;color:var(--wisteria)}
 .round-result.pending-label{color:var(--text-muted);font-weight:600;background:none}
 .next-round .round-result.pending-label{color:var(--emory-blue);font-weight:700}
 .round-actual-opp{font-size:10px;color:var(--text-dim)}
@@ -1056,11 +1059,14 @@ function renderRoundSection(team, rd, past) {
 
   if (rdResult) {
     const rc = rdResult.result === 'W' ? 'win' : 'loss';
-    h += `<span class="round-result ${rc}">${rdResult.result} ${rdResult.ballots}blt</span>`;
-    if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)} <span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span></span>`;
+    if (actualOpp) h += `<span class="round-side ${actualOpp.side}">${actualOpp.side.toUpperCase()}</span>`;
+    h += `<span class="round-result ${rc}">${rdResult.result}</span>`;
+    h += `<span class="round-blt-label">${rdResult.ballots}blt</span>`;
+    if (actualOpp) h += `<span class="round-actual-opp">vs ${esc(actualOpp.opp)}</span>`;
   } else if (scenarioResult) {
     const rc = scenarioResult.result === 'W' ? 'win' : 'loss';
-    h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult.result} ${scenarioResult.ballots}blt</span>`;
+    h += `<span class="round-result scenario-result ${rc}">IF ${scenarioResult.result}</span>`;
+    h += `<span class="round-blt-label">${scenarioResult.ballots}blt</span>`;
   } else if (isNext) {
     h += `<span class="round-result pending-label">NEXT</span>`;
   } else {
@@ -1236,13 +1242,15 @@ function rdDots(team, past) {
     if (rd) {
       const c = rd.result === 'W' ? 'win' : 'loss';
       d += `<div class="round-dot-group">
-        <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">${rd.result}${rd.ballots}</div>
         ${pr ? `<span class="round-side ${pr.side}">${pr.side}</span>` : ''}
+        <div class="round-dot ${c}" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">${rd.result}</div>
+        <span class="round-blt">${rd.ballots}blt</span>
       </div>`;
     } else if (sr) {
       const c = sr.result === 'W' ? 'win' : 'loss';
       d += `<div class="round-dot-group">
-        <div class="round-dot scenario ${c}" title="R${r}: Projected ${sr.result} ${sr.ballots}blt">${sr.result}${sr.ballots}</div>
+        <div class="round-dot scenario ${c}" title="R${r}: Projected ${sr.result} ${sr.ballots}blt">${sr.result}</div>
+        <span class="round-blt">${sr.ballots}blt</span>
       </div>`;
     } else {
       d += `<div class="round-dot-group"><div class="round-dot pending">R${r}</div></div>`;
