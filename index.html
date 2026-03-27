@@ -139,7 +139,7 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .team-tab .tab-record{font-family:'Open Sans',sans-serif;font-size:10px;font-weight:700;margin-left:6px;letter-spacing:0.05em}
 .round-section{border-top:1px solid var(--border)}
 .round-section.next-round{background:var(--emory-blue-dim)}
-.round-section.future-round{opacity:.7}
+.round-section.future-round{}
 .round-section.collapsed .round-section-body{display:none}
 .round-section-header{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;cursor:pointer;user-select:none;gap:8px;flex-wrap:wrap}
 .round-section-header:hover{background:var(--surface-hover)}
@@ -1017,8 +1017,10 @@ function renderCard(team) {
 function renderRoundSection(team, rd, past) {
   const rdResult = team.rounds.find(x => x.round === rd);
   const actualOpp = past.find(p => p.round === rd);
-  const isFuture = rd > S.curRound;
-  const isNext = rd === S.curRound + 1;
+  // Per-team: "next" is the first round this team doesn't have a result for
+  const teamNextRound = (team.rounds.length > 0 ? Math.max(...team.rounds.map(r => r.round)) : 0) + 1;
+  const isFuture = !rdResult;
+  const isNext = rd === teamNextRound;
   const sc = scenarios[team.name] || {};
   const scenarioResult = sc[rd]; // { result, ballots } or undefined
 
@@ -1042,7 +1044,7 @@ function renderRoundSection(team, rd, past) {
   const totalEligible = pool.length + pullUp.length + pullDown.length;
 
   const hasScenario = Object.keys(sc).length > 0;
-  const isProjected = isFuture && (scenarioResult || rd > S.curRound + 1);
+  const isProjected = isFuture && (scenarioResult || rd > teamNextRound);
   const exp = expandedRounds[team.name] || new Set();
   const isExpanded = exp.has(rd) || (isNext && !exp.has(-rd));
   let h = `<div class="round-section${isNext ? ' next-round' : ''}${scenarioResult ? ' scenario-round' : ''}${isFuture && !isNext && !scenarioResult ? ' future-round' : ''}${!isExpanded ? ' collapsed' : ''}">`;
