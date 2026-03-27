@@ -1098,7 +1098,7 @@ function renderRoundSection(team, rd, past) {
     } else if (isProjected && isPowerMatched) {
       h += `<div class="no-matchups" style="margin-bottom:6px">Projected at ${winsEntering}-${lossesEntering}${hasScenario ? ' (scenario)' : ''}</div>`;
     }
-    h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups, team, isPowerMatched, ballotsEntering);
+    h += renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, winsEntering, matchups, team, isPowerMatched, ballotsEntering, isProjected);
     h += `</div>`;
   } else {
     h += `<div class="round-section-body"><div class="no-matchups">No eligible opponents at ${winsEntering}-${lossesEntering} or adjacent brackets</div></div>`;
@@ -1108,7 +1108,7 @@ function renderRoundSection(team, rd, past) {
   return h;
 }
 
-function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchups, team, isPowerMatched, ballotsEntering) {
+function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchups, team, isPowerMatched, ballotsEntering, isProjected) {
   const { fullBracketSize, aboveBracketSize, belowBracketSize } = matchups;
   let h = '<div class="pool-table-wrap"><table class="pool-table"><thead><tr>';
   h += '<th>Team</th><th>Record</th><th>Blt</th><th>Their Side</th><th>Prob</th><th></th>';
@@ -1159,8 +1159,9 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
   }
 
   // Within-bracket probability distribution
+  // Only use fold pairing weights when we have real entering data (not projected)
   let poolProbs = [];
-  if (pool.length > 0 && isPowerMatched && team) {
+  if (pool.length > 0 && isPowerMatched && !isProjected && team) {
     // High-low fold pairing: sort bracket by ballots desc, then pair 1 vs N/2+1, 2 vs N/2+2, etc.
     const fullBracket = [...pool, { name: team.name, ballotsAsOf: ballotsEntering || 0 }]
       .sort((a, b) => b.ballotsAsOf !== a.ballotsAsOf ? b.ballotsAsOf - a.ballotsAsOf : a.name.localeCompare(b.name));
