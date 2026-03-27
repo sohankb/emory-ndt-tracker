@@ -1179,22 +1179,27 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
     poolProbs = pool.map(() => uniform);
   }
 
-  // Pull-up/pull-down probability: weight toward boundary teams
-  // Pull-downs come from the higher bracket — the bottom-ranked (fewest ballots) are most likely pulled
-  // Pull-ups come from the lower bracket — the top-ranked (most ballots) are most likely pulled
-  function boundaryWeights(teams, favorTop) {
+  // Pull-up/pull-down probability
+  // Power-matched: weight toward boundary teams (bottom of higher bracket, top of lower bracket)
+  // Pre-set: uniform distribution
+  function pullWeights(teams, favorTop) {
     if (teams.length === 0) return [];
-    // teams are already sorted by ballots desc
+    if (!isPowerMatched) {
+      // Pre-set rounds: any team equally likely to be pulled
+      const uniform = pPulled * (100 / teams.length);
+      return teams.map(() => uniform);
+    }
+    // Power-matched: exponential decay from favored boundary
     const decay = 0.4;
     const weights = teams.map((_, i) => {
-      const dist = favorTop ? i : (teams.length - 1 - i); // distance from favored end
+      const dist = favorTop ? i : (teams.length - 1 - i);
       return Math.pow(decay, dist);
     });
     const wSum = weights.reduce((a, b) => a + b, 0);
     return weights.map(w => pPulled * (w / wSum) * 100);
   }
-  const pullDownProbs = boundaryWeights(pullDown, false); // favor bottom (lowest ballots in higher bracket)
-  const pullUpProbs = boundaryWeights(pullUp, true); // favor top (highest ballots in lower bracket)
+  const pullDownProbs = pullWeights(pullDown, false);
+  const pullUpProbs = pullWeights(pullUp, true);
 
   function renderRows(teams, probs, label) {
     for (let i = 0; i < teams.length; i++) {
