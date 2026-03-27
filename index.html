@@ -1240,15 +1240,12 @@ function rdDots(team, past) {
     if (rd) {
       const rc = rd.result === 'W' ? 'result-w' : 'result-l';
       d += `<div class="round-dot-group" title="R${r}: ${rd.result} ${rd.ballots}blt${pr?' vs '+esc(pr.opp):''}">
-        ${pr ? `<span class="rd-badge side-${pr.side}">${pr.side}</span>` : ''}
         <span class="rd-badge ${rc}">${rd.result}</span>
-        <span class="rd-badge blt">${rd.ballots}</span>
       </div>`;
     } else if (sr) {
       const rc = sr.result === 'W' ? 'result-w' : 'result-l';
       d += `<div class="round-dot-group" title="R${r}: Projected ${sr.result} ${sr.ballots}blt">
         <span class="rd-badge scenario ${rc}">${sr.result}</span>
-        <span class="rd-badge blt">${sr.ballots}</span>
       </div>`;
     } else {
       d += `<div class="round-dot-group"><span class="rd-badge pending">R${r}</span></div>`;
