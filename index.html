@@ -1213,7 +1213,7 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
       h += `<td>${m.winsAsOf}-${mLosses}</td>`;
       h += `<td>${m.ballotsAsOf}</td>`;
       h += `<td>${oppSide.locked ? `<span class="rd-badge side-${oppSide.side.toLowerCase()}">Locked ${oppSide.side}</span>` : '<span class="side-either">Either Side</span>'}</td>`;
-      h += `<td>${prob.toFixed(1)}%</td>`;
+      h += `<td>${prob.toFixed(2)}%</td>`;
       h += `<td>${label ? `<span class="pull-label ${label}">${label}</span>` : ''}</td>`;
       h += `</tr>`;
     }
