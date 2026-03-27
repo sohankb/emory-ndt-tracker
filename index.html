@@ -121,18 +121,31 @@ h1 span{color:var(--text-dim);font-family:'Open Sans',sans-serif;font-size:13px;
 .standings-table .tn{color:var(--text);font-weight:500}
 .standings-table .emory-row td{background:var(--emory-blue-dim)}
 .standings-table .emory-row .tn{color:var(--emory-blue);font-weight:700}
-.opp-pred{display:flex;gap:2px;align-items:center;flex-wrap:nowrap}
-.opp-pred-rd{font-size:8px;color:var(--text-muted);font-weight:600}
-.opp-pred-btn{font-size:8px;font-family:'Open Sans',sans-serif;font-weight:700;padding:1px 4px;border:1px solid var(--border);border-radius:2px;background:var(--surface);color:var(--text-muted);cursor:pointer;line-height:1}
-.opp-pred-btn:hover{border-color:var(--border-accent)}
-.opp-pred-btn.fp-w{color:var(--win)}
-.opp-pred-btn.fp-l{color:var(--loss)}
-.opp-pred-btn.fp-w.active{background:var(--win-bg);border-color:var(--win)}
-.opp-pred-btn.fp-l.active{background:var(--loss-bg);border-color:var(--loss)}
-.opp-pred-dot{height:16px;padding:0 3px;font-size:8px}
-.field-pred-count{font-family:'Open Sans',sans-serif;font-size:10px;font-weight:600;color:var(--text-muted);margin-left:8px}
-.field-pred-clear{font-size:10px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--loss);cursor:pointer;background:none;border:1px solid var(--loss-bg);border-radius:4px;padding:2px 8px;margin-left:4px}
-.field-pred-clear:hover{background:var(--loss-bg)}
+.pred-section{border-top:1px solid var(--border);margin-top:2px}
+.pred-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;user-select:none}
+.pred-header:hover{background:var(--surface-hover)}
+.pred-title{font-family:'Open Sans',sans-serif;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em}
+.pred-count{font-size:10px;font-weight:600;color:var(--emory-blue);margin-left:6px}
+.pred-toggle{font-size:9px;color:var(--text-muted);font-weight:600}
+.pred-clear{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:600;color:var(--loss);cursor:pointer;background:none;border:1px solid var(--loss-bg);border-radius:3px;padding:1px 6px;margin-right:8px}
+.pred-clear:hover{background:var(--loss-bg)}
+.pred-body{display:none;padding:0 14px 14px}
+.pred-body.open{display:block}
+.pred-pairing{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(216,220,227,0.4);font-size:12px}
+.pred-pairing:last-child{border-bottom:none}
+.pred-team{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;color:var(--text)}
+.pred-team.pred-aff{text-align:right}
+.pred-team.pred-neg{text-align:left}
+.pred-vs{font-size:10px;color:var(--text-muted);font-weight:600;flex-shrink:0}
+.pred-side-tag{font-size:9px;font-weight:700;flex-shrink:0}
+.pred-btns{display:flex;gap:2px;flex-shrink:0}
+.pred-btn{font-size:9px;font-family:'Open Sans',sans-serif;font-weight:700;padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;line-height:1.2}
+.pred-btn:hover{border-color:var(--border-accent)}
+.pred-btn.pred-w{color:var(--win)}
+.pred-btn.pred-l{color:var(--loss)}
+.pred-btn.pred-w.active{background:var(--win-bg);border-color:var(--win)}
+.pred-btn.pred-l.active{background:var(--loss-bg);border-color:var(--loss)}
+.pred-record{font-size:10px;color:var(--text-muted);font-weight:600;flex-shrink:0;min-width:28px;text-align:center}
 .error-banner{background:var(--loss-bg);border:1px solid rgba(209,65,36,0.3);border-radius:6px;padding:14px 18px;margin-top:16px;color:var(--loss);font-size:12px;line-height:1.6}
 .loading-state{text-align:center;padding:60px 20px;color:var(--text-muted);font-size:12px}
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--emory-blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
@@ -246,6 +259,7 @@ let activeTab = null; // currently selected Emory team name, null = first
 let standingsOpen = false; // persists across re-renders
 let scenarios = {}; // teamName -> { roundNum: 'W'|'L' } — hypothetical projections
 let expandedRounds = {}; // teamName -> Set of expanded round numbers
+let predPanelOpen = {}; // rd -> boolean — predictions panel toggle
 
 let S = {
   teams: [],
@@ -1122,48 +1136,20 @@ function renderRoundSection(team, rd, past) {
     h += `<div class="round-section-body"><div class="no-matchups">No eligible opponents at ${winsEntering}-${lossesEntering} or adjacent brackets</div></div>`;
   }
 
-  h += `</div>`;
-  return h;
-}
+  // Pairing predictions: show for rounds that have pairings data
+  // (the round underway where results are pending)
+  if (S.pairings[rd] && S.pairings[rd].length > 0) {
+    h += renderPairingPredictions(rd);
+  }
 
-function renderOppPredictions(m, rd) {
-  // Show prediction buttons for opponent's unplayed rounds BEFORE this round
-  // so user can adjust their record entering this round
-  const maxPlayed = m.rounds.length > 0 ? Math.max(...m.rounds.map(r => r.round)) : 0;
-  const sc = scenarios[m.name] || {};
-  let h = '<span class="opp-pred">';
-  // Show completed round dots
-  for (let r = 1; r <= maxPlayed; r++) {
-    const rr = m.rounds.find(x => x.round === r);
-    if (rr) {
-      const rc = rr.result === 'W' ? 'result-w' : 'result-l';
-      h += `<span class="rd-badge opp-pred-dot ${rc}">${rr.result}</span>`;
-    }
-  }
-  // Show prediction buttons for unplayed rounds before this round
-  for (let r = maxPlayed + 1; r < rd; r++) {
-    const sr = sc[r];
-    const tn = esc(m.name).replace(/'/g, "\\'");
-    h += `<span class="opp-pred-rd">R${r}</span>`;
-    h += `<button class="opp-pred-btn fp-w${sr && sr.result==='W' && sr.ballots===3 ? ' active' : ''}" onclick="event.stopPropagation();toggleFieldScenario('${tn}',${r},'W',3)">3-0</button>`;
-    h += `<button class="opp-pred-btn fp-w${sr && sr.result==='W' && sr.ballots===2 ? ' active' : ''}" onclick="event.stopPropagation();toggleFieldScenario('${tn}',${r},'W',2)">2-1</button>`;
-    h += `<button class="opp-pred-btn fp-l${sr && sr.result==='L' && sr.ballots===1 ? ' active' : ''}" onclick="event.stopPropagation();toggleFieldScenario('${tn}',${r},'L',1)">1-2</button>`;
-    h += `<button class="opp-pred-btn fp-l${sr && sr.result==='L' && sr.ballots===0 ? ' active' : ''}" onclick="event.stopPropagation();toggleFieldScenario('${tn}',${r},'L',0)">0-3</button>`;
-    // Only show next unplayed round unless already predicted
-    if (!sr) break;
-  }
-  h += '</span>';
+  h += `</div>`;
   return h;
 }
 
 function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchups, team, isPowerMatched, ballotsEntering, isProjected) {
   const { fullBracketSize, aboveBracketSize, belowBracketSize } = matchups;
-  // Show predict column for future rounds where opponents have unplayed prior rounds
-  const showPredict = rd > 1;
-  const cols = showPredict ? 7 : 6;
   let h = '<div class="pool-table-wrap"><table class="pool-table"><thead><tr>';
   h += '<th>Team</th><th>Record</th><th>Blt</th><th>Their Side</th><th>Prob</th><th></th>';
-  if (showPredict) h += '<th>Predict Prior Rounds</th>';
   h += '</tr></thead><tbody>';
 
   // Probability model: uniform within bracket, small fixed pull chance for adjacent brackets
@@ -1213,8 +1199,6 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
       const mLosses = m.roundsPlayed - m.winsAsOf;
       const oppSide = likelySideAsOf(m.name, rd);
       const isActual = actualOpp && actualOpp.opp === m.name;
-      // Find the original team object for round data
-      const origTeam = S.teams.find(t => t.name === m.name);
       h += `<tr class="${isActual ? 'actual-opp' : ''}">`;
       h += `<td class="tn">${esc(m.name)}</td>`;
       h += `<td>${m.winsAsOf}-${mLosses}</td>`;
@@ -1222,11 +1206,6 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
       h += `<td>${oppSide.locked ? `<span class="rd-badge side-${oppSide.side.toLowerCase()}">Locked ${oppSide.side}</span>` : '<span class="side-either">Either Side</span>'}</td>`;
       h += `<td>${prob.toFixed(2)}%</td>`;
       h += `<td>${label ? `<span class="pull-label ${label}">${label}</span>` : ''}</td>`;
-      if (showPredict && origTeam) {
-        h += `<td>${renderOppPredictions(origTeam, rd)}</td>`;
-      } else if (showPredict) {
-        h += `<td></td>`;
-      }
       h += `</tr>`;
     }
   }
@@ -1235,19 +1214,13 @@ function renderPoolTable(pool, pullUp, pullDown, rd, actualOpp, teamWins, matchu
 
   if (pullDown.length > 0) {
     const pdWins = teamWins + 1;
-    h += `<tr class="pull-divider"><td colspan="${cols}">Pull-down from ${pdWins}-${(rd - 1) - pdWins}</td></tr>`;
+    h += `<tr class="pull-divider"><td colspan="6">Pull-down from ${pdWins}-${(rd - 1) - pdWins}</td></tr>`;
     renderRows(pullDown, pullDownProbs, 'pull-down');
   }
   if (pullUp.length > 0) {
     const puWins = teamWins - 1;
-    h += `<tr class="pull-divider"><td colspan="${cols}">Pull-up from ${puWins}-${(rd - 1) - puWins}</td></tr>`;
+    h += `<tr class="pull-divider"><td colspan="6">Pull-up from ${puWins}-${(rd - 1) - puWins}</td></tr>`;
     renderRows(pullUp, pullUpProbs, 'pull-up');
-  }
-
-  // Field predictions summary
-  const fpCount = countFieldPredictions();
-  if (fpCount > 0) {
-    h += `<tr><td colspan="${cols}" style="text-align:right;padding:4px 10px"><span class="field-pred-count">${fpCount} field prediction${fpCount !== 1 ? 's' : ''}</span><button class="field-pred-clear" onclick="event.stopPropagation();clearFieldPredictions()">Clear All</button></td></tr>`;
   }
 
   h += '</tbody></table></div>';
@@ -1291,33 +1264,125 @@ function renderRoundNav() {
   document.getElementById('roundNav').innerHTML = h;
 }
 
-function toggleFieldScenario(teamName, rd, result, ballots) {
-  if (!scenarios[teamName]) scenarios[teamName] = {};
-  const cur = scenarios[teamName][rd];
-  if (cur && cur.result === result && cur.ballots === ballots) {
-    delete scenarios[teamName][rd];
-    for (let r = rd + 1; r <= 8; r++) delete scenarios[teamName][r];
+// Pairing predictions: predict who wins each debate in a round
+// Sets scenarios for BOTH teams in the pairing (winner gets W, loser gets L)
+function setPairingPrediction(affName, negName, rd, winnerSide, ballots) {
+  const winBlt = ballots;
+  const loseBlt = 3 - ballots;
+  const winner = winnerSide === 'aff' ? affName : negName;
+  const loser = winnerSide === 'aff' ? negName : affName;
+
+  // Check if clicking same prediction again → clear it
+  const curW = scenarios[winner] && scenarios[winner][rd];
+  if (curW && curW.result === 'W' && curW.ballots === winBlt) {
+    if (scenarios[winner]) { delete scenarios[winner][rd]; if (!Object.keys(scenarios[winner]).length) delete scenarios[winner]; }
+    if (scenarios[loser]) { delete scenarios[loser][rd]; if (!Object.keys(scenarios[loser]).length) delete scenarios[loser]; }
   } else {
-    scenarios[teamName][rd] = { result, ballots };
+    if (!scenarios[winner]) scenarios[winner] = {};
+    scenarios[winner][rd] = { result: 'W', ballots: winBlt };
+    if (!scenarios[loser]) scenarios[loser] = {};
+    scenarios[loser][rd] = { result: 'L', ballots: loseBlt };
   }
   render();
 }
 
-function clearFieldPredictions() {
-  const emoryTeams = new Set(S.teams.filter(t => t.school === EMORY).map(t => t.name));
-  for (const name of Object.keys(scenarios)) {
-    if (!emoryTeams.has(name)) delete scenarios[name];
+function clearRoundPredictions(rd) {
+  const pairs = S.pairings[rd] || [];
+  for (const p of pairs) {
+    const aff = resolveName(p.aff);
+    const neg = resolveName(p.neg);
+    if (aff && scenarios[aff]) { delete scenarios[aff][rd]; if (!Object.keys(scenarios[aff]).length) delete scenarios[aff]; }
+    if (neg && scenarios[neg]) { delete scenarios[neg][rd]; if (!Object.keys(scenarios[neg]).length) delete scenarios[neg]; }
   }
   render();
 }
 
-function countFieldPredictions() {
-  const emoryTeams = new Set(S.teams.filter(t => t.school === EMORY).map(t => t.name));
+function countRoundPredictions(rd) {
+  const pairs = S.pairings[rd] || [];
   let count = 0;
-  for (const [name, sc] of Object.entries(scenarios)) {
-    if (!emoryTeams.has(name)) count += Object.keys(sc).length;
+  for (const p of pairs) {
+    const aff = resolveName(p.aff);
+    if (aff && scenarios[aff] && scenarios[aff][rd]) count++;
   }
   return count;
+}
+
+function togglePredPanel(rd) {
+  predPanelOpen[rd] = !predPanelOpen[rd];
+  const body = document.getElementById(`predBody${rd}`);
+  const toggle = document.getElementById(`predToggle${rd}`);
+  if (body) body.classList.toggle('open', predPanelOpen[rd]);
+  if (toggle) toggle.textContent = predPanelOpen[rd] ? '▲' : '▼';
+}
+
+function renderPairingPredictions(rd) {
+  const pairs = S.pairings[rd];
+  if (!pairs || !pairs.length) return '';
+  const predCount = countRoundPredictions(rd);
+  const isOpen = predPanelOpen[rd] || false;
+
+  let h = `<div class="pred-section">`;
+  h += `<div class="pred-header" onclick="togglePredPanel(${rd})">`;
+  h += `<span><span class="pred-title">Predictions</span>`;
+  if (predCount > 0) h += `<span class="pred-count">${predCount}/${pairs.length}</span>`;
+  h += `</span>`;
+  h += `<span>`;
+  if (predCount > 0) h += `<button class="pred-clear" onclick="event.stopPropagation();clearRoundPredictions(${rd})">Clear</button>`;
+  h += `<span class="pred-toggle" id="predToggle${rd}">${isOpen ? '▲' : '▼'}</span>`;
+  h += `</span></div>`;
+  h += `<div class="pred-body${isOpen ? ' open' : ''}" id="predBody${rd}">`;
+
+  for (const p of pairs) {
+    const affName = resolveName(p.aff);
+    const negName = resolveName(p.neg);
+    if (!affName || !negName) continue;
+
+    const affTeam = S.teams.find(t => t.name === affName);
+    const negTeam = S.teams.find(t => t.name === negName);
+    if (!affTeam || !negTeam) continue;
+
+    const affL = affTeam.rounds.filter(r => r.round < rd).length;
+    const affW = affTeam.rounds.filter(r => r.round < rd && r.result === 'W').length;
+    const negL2 = negTeam.rounds.filter(r => r.round < rd).length;
+    const negW = negTeam.rounds.filter(r => r.round < rd && r.result === 'W').length;
+
+    // Check if this pairing already has a real result
+    const affResult = affTeam.rounds.find(r => r.round === rd);
+    if (affResult) continue; // Skip pairings with real results
+
+    // Current prediction state
+    const affSc = scenarios[affName] && scenarios[affName][rd];
+    const negSc = scenarios[negName] && scenarios[negName][rd];
+    const affEsc = esc(affName).replace(/'/g, "\\'");
+    const negEsc = esc(negName).replace(/'/g, "\\'");
+
+    h += `<div class="pred-pairing">`;
+    h += `<span class="rd-badge side-aff pred-side-tag">AFF</span>`;
+    h += `<span class="pred-record">${affW}-${affL - affW}</span>`;
+    h += `<span class="pred-team pred-aff" title="${esc(affName)}">${esc(affName)}</span>`;
+
+    // AFF wins buttons
+    h += `<span class="pred-btns">`;
+    h += `<button class="pred-btn pred-w${affSc && affSc.result==='W' && affSc.ballots===3 ? ' active' : ''}" onclick="event.stopPropagation();setPairingPrediction('${affEsc}','${negEsc}',${rd},'aff',3)">3-0</button>`;
+    h += `<button class="pred-btn pred-w${affSc && affSc.result==='W' && affSc.ballots===2 ? ' active' : ''}" onclick="event.stopPropagation();setPairingPrediction('${affEsc}','${negEsc}',${rd},'aff',2)">2-1</button>`;
+    h += `</span>`;
+
+    h += `<span class="pred-vs">vs</span>`;
+
+    // NEG wins buttons
+    h += `<span class="pred-btns">`;
+    h += `<button class="pred-btn pred-l${negSc && negSc.result==='W' && negSc.ballots===2 ? ' active' : ''}" onclick="event.stopPropagation();setPairingPrediction('${affEsc}','${negEsc}',${rd},'neg',2)">2-1</button>`;
+    h += `<button class="pred-btn pred-l${negSc && negSc.result==='W' && negSc.ballots===3 ? ' active' : ''}" onclick="event.stopPropagation();setPairingPrediction('${affEsc}','${negEsc}',${rd},'neg',3)">3-0</button>`;
+    h += `</span>`;
+
+    h += `<span class="pred-team pred-neg" title="${esc(negName)}">${esc(negName)}</span>`;
+    h += `<span class="pred-record">${negW}-${negL2 - negW}</span>`;
+    h += `<span class="rd-badge side-neg pred-side-tag">NEG</span>`;
+    h += `</div>`;
+  }
+
+  h += `</div></div>`;
+  return h;
 }
 
 function renderStandings() {
